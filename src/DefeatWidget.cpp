@@ -2,8 +2,7 @@
 
 namespace SexLabDefeat {
 
-    DefeatWidget::DefeatWidget(std::string widgetRoot) {
-        _widgetRoot = widgetRoot;
+    DefeatWidget::DefeatWidget() {
 
         _ui = RE::UI::GetSingleton();
         auto loc_hud = _ui->menuMap.find("HUD Menu");
@@ -15,12 +14,22 @@ namespace SexLabDefeat {
 
     DefeatWidget::~DefeatWidget() { _hudmenu.reset(); }
 
-    void DefeatWidget::setVisible(bool inUITask) {
+    bool DefeatWidget::setVisible(bool inUITask) {
+        auto _widgetRoot = getWidgetRootId();
+        if (_widgetRoot.empty()) {
+            // SKSE::log::error("WidgetRoot not initialized");
+            return false;
+        }
         spinLock();
         lastVisible = true;
         spinUnlock();
         auto task = [this] {
-            SKSE::log::trace("setVisible");
+            auto _widgetRoot = std::string(getWidgetRootId());
+            if (_widgetRoot.empty() || _hudmenu.get() == nullptr) {
+                SKSE::log::error("WidgetRoot not initialized");
+                return;
+            }
+            SKSE::log::trace("DefeatWidget setVisible");
 
             const std::string method = (_widgetRoot + ".setAlpha");
 
@@ -38,14 +47,25 @@ namespace SexLabDefeat {
         } else {
             SKSE::GetTaskInterface()->AddUITask(task);
         }
+        return true;
     }
 
-    void DefeatWidget::setInvisible(bool inUITask) {
+    bool DefeatWidget::setInvisible(bool inUITask) {
+        auto _widgetRoot = getWidgetRootId();
+        if (_widgetRoot.empty()) {
+            // SKSE::log::error("WidgetRoot not initialized");
+            return false;
+        }
         spinLock();
         lastVisible = false;
         spinUnlock();
         auto task = [this] {
-            SKSE::log::trace("setInvisible");
+            auto _widgetRoot = std::string(getWidgetRootId());
+            if (_widgetRoot.empty() || _hudmenu.get() == nullptr) {
+                SKSE::log::error("WidgetRoot not initialized");
+                return;
+            }
+            SKSE::log::trace("DefeatWidget setInvisible");
 
             const std::string method = (_widgetRoot + ".setAlpha");
 
@@ -63,6 +83,7 @@ namespace SexLabDefeat {
         } else {
             SKSE::GetTaskInterface()->AddUITask(task);
         }
+        return true;
     }
 
     bool DefeatWidget::getLastVisible() {
@@ -72,12 +93,22 @@ namespace SexLabDefeat {
         return ret;
     }
 
-    void DefeatWidget::setPercent(float value, bool inUITask) {
+    bool DefeatWidget::setPercent(float value, bool inUITask) {
+        auto _widgetRoot = getWidgetRootId();
+        if (_widgetRoot.empty()) {
+            //SKSE::log::error("WidgetRoot not initialized");
+            return false;
+        }
         spinLock();
         lastPercent = value;
         spinUnlock();
         auto task = [this, value] {
-            SKSE::log::trace("setPercent {}%", static_cast<int>(value * 100));
+            auto _widgetRoot = std::string(getWidgetRootId());
+            if (_widgetRoot.empty() || _hudmenu.get() == nullptr) {
+                SKSE::log::error("WidgetRoot not initialized");
+                return;
+            }
+            SKSE::log::trace("DefeatWidget setPercent {}%", static_cast<int>(value * 100));
 
             const std::string method = (_widgetRoot + ".setPercent");
 
@@ -95,6 +126,7 @@ namespace SexLabDefeat {
         } else {
             SKSE::GetTaskInterface()->AddUITask(task);
         }
+        return true;
     }
     float DefeatWidget::getLastPercent() {
         spinLock();
@@ -110,20 +142,33 @@ namespace SexLabDefeat {
         return ret;
     }
 
-    void DefeatWidget::startDynamicWidget(bool inUITask) {
+    bool DefeatWidget::startDynamicWidget(bool inUITask) {
+        bool ret = false;
         spinLock();
-        setVisible(inUITask);
-        state = DefeatWidget::State::DynamicWidget;
-        spinUnlock();
-    }
-
-    void DefeatWidget::stopDynamicWidget(bool inUITask) {
-        spinLock();
-        if (state == DefeatWidget::State::DynamicWidget) {
-            setInvisible(inUITask);
-            setPercent(0, inUITask);
-            state = DefeatWidget::State::None;
+        ret = setVisible(inUITask);
+        if (ret) {
+            state = DefeatWidget::State::DYNAMIC_WIDGET;
         }
         spinUnlock();
+        return ret;
+    }
+
+    bool DefeatWidget::stopDynamicWidget(bool inUITask) {
+        bool ret = false;
+        spinLock();
+        if (state == DefeatWidget::State::DYNAMIC_WIDGET) {
+            if (setInvisible(inUITask) && setPercent(0, inUITask)) {
+                state = DefeatWidget::State::NONE;
+            }
+        }
+        spinUnlock();
+        return ret;
+    }
+    std::string_view DefeatWidget::getWidgetRootId() const {
+        auto _widgetRoot = widgetRoot->get();
+        if (_widgetRoot.empty()) {
+            widgetRoot->invalidate();
+        }
+        return _widgetRoot;
     }
 }

@@ -4,6 +4,7 @@
 build
 BuildVersion.h
 cmake-build*
+CMakeUser.txt
 CMakeFiles
 *.pex
 meta.ini

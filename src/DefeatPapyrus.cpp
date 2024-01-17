@@ -16,10 +16,10 @@ namespace SexLabDefeat {
 
         template <typename T>
         ObjectVariable<T>::ObjectVariable(ObjectPtr scriptObject, std::string_view a_var,
-                                                               bool isPropery) {
+                                          ObjectVariableConfig config) {
             _scriptObject = scriptObject;
             _varName = a_var;
-            _isPropery = isPropery;
+            _config = config;
         }
 
         template <typename T>
@@ -37,12 +37,21 @@ namespace SexLabDefeat {
             spinUnlock();
         }
 
+        template <class T>
+        ObjectVariable<T>::State ObjectVariable<T>::getState() {
+            spinLock();
+            auto ret = _state;
+            spinUnlock();
+            return ret;
+        }
+
         template <typename T>
         T ObjectVariable<T>::retrieve(T _def) {
-            // TODO: need implement invalidate
-            //if (_state == State::VALID) {
-            //    return value;
-            //}
+            if (_config.isPersistent) {
+                if (_state == State::FETCHED) {
+                    return value;
+                }
+            }
             if (_state == State::NOT_EXIST) {
                 return _def;
             }
@@ -58,14 +67,15 @@ namespace SexLabDefeat {
                 return _def;
             }
             Variable* var;
-            if (_isPropery) {
+            if (_config.isProprty) {
                 var = _scriptObject->GetProperty(_varName);
             } else {
                 var = _scriptObject->GetVariable(_varName);
             }
             if (var == nullptr) {
                 _state = State::NOT_EXIST;
-                SKSE::log::critical("getFromVM - {} '{}' not found in Script Object", (_isPropery ? "Property" : "Variable"),
+                SKSE::log::critical("getFromVM - {} '{}' not found in Script Object",
+                                    (_config.isProprty ? "Property" : "Variable"),
                                     _varName);
                 return _def;
             }
@@ -115,7 +125,7 @@ namespace SexLabDefeat {
                 _state = State::NOT_EXIST;
                 return _def;
             } else {
-                _state = State::VALID;
+                _state = State::FETCHED;
                 return val;
             }
         }

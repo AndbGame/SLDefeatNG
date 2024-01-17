@@ -275,12 +275,16 @@ namespace SexLabDefeat {
         event->target->incrementDynamicDefeat(DefeatAmount);
         auto totalDynamicDefeat = event->target->getDynamicDefeat();
 
-        if (widget->getState() != DefeatWidget::State::DynamicWidget && totalDynamicDefeat > 0) {
-            widget->startDynamicWidget();
+        if (widget->getState() != DefeatWidget::State::DYNAMIC_WIDGET && totalDynamicDefeat > 0) {
+            if (!widget->startDynamicWidget()) {
+                SKSE::log::error("Error on start Dynamic Widget");
+            }
             shedulePlayerDeplateDynamicDefeat();
         }
         if (totalDynamicDefeat >= 1) {
-            widget->stopDynamicWidget();
+            if (!widget->stopDynamicWidget()) {
+                SKSE::log::error("Error on stop Dynamic Widget");
+            }
             event->target->resetDynamicDefeat();
 
             HitResult result = HitResult::KNONKDOWN;
@@ -296,7 +300,9 @@ namespace SexLabDefeat {
             // event->target->getDynamicDefeatSpinLock()->spinUnlock();
             return result;
         } else if (totalDynamicDefeat > 0) {
-            widget->setPercent(totalDynamicDefeat);
+            if (!widget->setPercent(totalDynamicDefeat)) {
+                SKSE::log::error("Error on set percent Dynamic Widget");
+            }
             // event->target->getDynamicDefeatSpinLock()->spinUnlock();
         }
 
@@ -334,7 +340,7 @@ namespace SexLabDefeat {
                                     mcmConfig->getConfig<float>("DynamicDefeatDepleteOverTime", 1.0f) / 100);
                             } else {
                                 player->decrementDynamicDefeat(
-                                    mcmConfig->getConfig<float>("DynamicDefeatDepleteOverTime", 1.0f) / (100 / 5));
+                                    mcmConfig->getConfig<float>("DynamicDefeatDepleteOverTime", 1.0f) / (100.0 / 5));
                             }
                             totalDynamicDefeat = _defeatManager->getActorManager()->getPlayer()->getDynamicDefeat();
                         }
@@ -345,12 +351,17 @@ namespace SexLabDefeat {
                         auto totalDynamicDefeat = player->getDynamicDefeat();
                         auto widget = _defeatManager->getWidget();
                         if (widget != nullptr) {
-                            if (totalDynamicDefeat <= 0 && widget->getState() == DefeatWidget::State::DynamicWidget) {
-                                widget->stopDynamicWidget(true);
+                            if (totalDynamicDefeat <= 0 && widget->getState() == DefeatWidget::State::DYNAMIC_WIDGET) {
+                                if (!widget->stopDynamicWidget(true)) {
+                                    SKSE::log::error("Error on stop Dynamic Widget");
+                                }
                             } else if (totalDynamicDefeat != widget->getLastPercent()) {
-                                widget->setPercent(totalDynamicDefeat, true);
-                                SKSE::log::trace("PlayerDeplateDynamicDefeat widget deplated to {}%",
-                                                 static_cast<int>(totalDynamicDefeat * 100));
+                                if (!widget->setPercent(totalDynamicDefeat, true)) {
+                                    SKSE::log::error("Error on set percent Dynamic Widget");
+                                } else {
+                                    SKSE::log::trace("PlayerDeplateDynamicDefeat widget deplated to {}%",
+                                                     static_cast<int>(totalDynamicDefeat * 100));
+                                }
                             }
                         }
                     });

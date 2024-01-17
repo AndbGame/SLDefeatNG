@@ -52,16 +52,6 @@ namespace {
         _defeatManager->setActorState(actor, _state);
     }
 
-    inline void DefeatQTEMeterInit(PAPYRUSFUNCHANDLE, std::string widgetRoot) {
-        if (widgetRoot.empty()) {
-            return;
-        }
-        SKSE::log::trace("Papyrus call DefeatQTEMeterInit({})", widgetRoot);
-
-        auto defeatWidget = new SexLabDefeat::DefeatWidget(widgetRoot);
-        _defeatManager->setWidget(defeatWidget);
-    }
-
     bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
         const bool loc_unhook = _defeatManager->getConfig()->CFG_PAPYUNHOOK;
 
@@ -70,7 +60,6 @@ namespace {
 
         REGISTERPAPYRUSFUNC(responseActorExtraData, true)
         REGISTERPAPYRUSFUNC(setActorVulnerability, true)
-        REGISTERPAPYRUSFUNC(DefeatQTEMeterInit, true)
         REGISTERPAPYRUSFUNC(setActorState, true)
 
 #undef REGISTERPAPYRUSFUNC
@@ -86,7 +75,6 @@ namespace SexLabDefeat {
         _defeatConfig = defeatConfig;
         _defeatActorManager = new DefeatActorManager(this);
         _defeatCombatManager = new DefeatCombatManager(_defeatActorManager, this);
-        //_worker = new WorkerThread("DefeatWorkerThread", this);
     }
 
     void DefeatManager::load() {
@@ -97,7 +85,6 @@ namespace SexLabDefeat {
         } else {
             SKSE::stl::report_and_fail("Failure to register Papyrus bindings.");
         }
-        //_worker->CreateThread();
     }
 
     void DefeatManager::reset() {
@@ -106,7 +93,26 @@ namespace SexLabDefeat {
         initializeDependency();
         initializeForms();
         _defeatConfig->Reset();
+        reInitializeWidget();
         setGameState(DefeatManager::GameState::IN_GAME);
+    }
+
+    void DefeatManager::reInitializeWidget() const {
+        _defeatManager->setWidget(nullptr);
+        if (Forms.DefeatPlayerQTE == nullptr) {
+            SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
+        } else {
+            auto DefeatQTEMeter =
+                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "defeatmcmscr");
+            if (DefeatQTEMeter == nullptr) {
+                SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEMeter'");
+            } else {
+                auto defeatWidget = new DefeatWidget();
+                defeatWidget->widgetRoot = DefeatWidget::StringVarPtr(new DefeatWidget::StringVar(
+                    DefeatQTEMeter, "_widgetRoot"sv, PapyrusInterface::ObjectVariableConfig(true, true)));
+                _defeatManager->setWidget(defeatWidget);
+            }
+        }
     }
 
     void DefeatManager::initializeDependency() {
@@ -202,8 +208,10 @@ namespace SexLabDefeat {
             if (defeatActor->isPlayer()) {
                 _defeatCombatManager->interruptPlayerDeplateDynamicDefeat();
                 auto widget = getWidget();
-                if (widget != nullptr && widget->getState() == DefeatWidget::State::DynamicWidget) {
-                    getWidget()->stopDynamicWidget();
+                if (widget != nullptr && widget->getState() == DefeatWidget::State::DYNAMIC_WIDGET) {
+                    if (!getWidget()->stopDynamicWidget()) {
+                        SKSE::log::error("Error on stop Dynamic Widget");
+                    }
                 }
             }
         }

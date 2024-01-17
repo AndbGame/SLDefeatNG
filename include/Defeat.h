@@ -88,30 +88,35 @@ namespace SexLabDefeat {
 
     class DefeatWidget : public SpinLock {
     public:
-        enum State { QTE_METER, DynamicWidget, None };
-        DefeatWidget(std::string widgetRoot);
+        using StringVar = PapyrusInterface::ObjectVariable<std::string_view>;
+        using StringVarPtr = std::unique_ptr<StringVar>;
+
+        enum State { QTE_METER, DYNAMIC_WIDGET, NONE };
+
+        StringVarPtr widgetRoot;
+
+        DefeatWidget();
         ~DefeatWidget();
 
-        void setVisible(bool inUITask = false);
-        void setInvisible(bool inUITask = false);
+        [[nodiscard]] bool setVisible(bool inUITask = false);
+        [[nodiscard]] bool setInvisible(bool inUITask = false);
         bool getLastVisible();
-        void setPercent(float value, bool inUITask = false);
+        [[nodiscard]] bool setPercent(float value, bool inUITask = false);
         float getLastPercent();
 
         State getState();
-        void startDynamicWidget(bool inUITask = false);
-        void stopDynamicWidget(bool inUITask = false);
+        [[nodiscard]] bool startDynamicWidget(bool inUITask = false);
+        [[nodiscard]] bool stopDynamicWidget(bool inUITask = false);
 
     protected:
-        //RE::BSTSmartPointer<RE::BSScript::Object> _widget;
-        std::string _widgetRoot;
+        std::string_view getWidgetRootId() const;
 
         RE::GPtr<RE::GFxMovieView> _hudmenu;
         RE::UI* _ui;
 
         float lastPercent = 0.0;
         bool lastVisible = false;
-        State state = State::None;
+        State state = State::NONE;
     };
 
     class ActorExtraData {
@@ -178,7 +183,7 @@ namespace SexLabDefeat {
         DefeatActor(RE::Actor* actor, DefeatManager* defeatManager);
         ~DefeatActor();
 
-        const RE::FormID getActorFormId() { return _actorFormId; };
+        RE::FormID getActorFormId() const { return _actorFormId; };
         RE::Actor* getActor();
 
         bool isSame(RE::Actor* actor);
@@ -386,6 +391,7 @@ namespace SexLabDefeat {
 
         void load();
         void reset();
+        void reInitializeWidget() const;
         GameState getGameState();
         void setGameState(GameState state);
         void ActorEnterdToCombatState(RE::Actor* target_actor);

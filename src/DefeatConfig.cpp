@@ -24,10 +24,10 @@ namespace SexLabDefeat {
 
     void DefeatConfig::Reset() {
         LoadScriptObjects();
-        Config.RaceAllowedNVN =
-            DefeatConfig::StringSetVarPtr(new StringSetVar(defeatconfig, "RaceAllowedNVN"sv, false));
-        Config.RaceAllowedPvic =
-            DefeatConfig::StringSetVarPtr(new StringSetVar(defeatconfig, "RaceAllowedPvic"sv, false));
+        Config.RaceAllowedNVN = DefeatConfig::StringSetVarPtr(
+            new StringSetVar(defeatconfig, "RaceAllowedNVN"sv, PapyrusInterface::ObjectVariableConfig(false)));
+        Config.RaceAllowedPvic = DefeatConfig::StringSetVarPtr(
+            new StringSetVar(defeatconfig, "RaceAllowedPvic"sv, PapyrusInterface::ObjectVariableConfig(false)));
     }
 
     void DefeatConfig::LoadScriptObjects() {

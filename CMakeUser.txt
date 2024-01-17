@@ -1,1 +1,0 @@
-set(OUTPUT_FOLDER "E:/andb_skyrim_3/andb_1/mods/Andb.Defeat.skse.experiment.2")
