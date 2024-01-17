@@ -102,14 +102,16 @@ namespace SexLabDefeat {
         if (Forms.DefeatPlayerQTE == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
         } else {
-            auto DefeatQTEMeter =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "defeatmcmscr");
-            if (DefeatQTEMeter == nullptr) {
-                SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEMeter'");
+            auto DefeatQTEWidget =
+                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+            if (DefeatQTEWidget == nullptr) {
+                SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
             } else {
                 auto defeatWidget = new DefeatWidget();
-                defeatWidget->widgetRoot = DefeatWidget::StringVarPtr(new DefeatWidget::StringVar(
-                    DefeatQTEMeter, "_widgetRoot"sv, PapyrusInterface::ObjectVariableConfig(true, true)));
+                defeatWidget->widgetRoot = PapyrusInterface::StringVarPtr(new PapyrusInterface::StringVar(
+                    DefeatQTEWidget, "_widgetRoot"sv, PapyrusInterface::ObjectVariableConfig(false, true)));
+                defeatWidget->widgetReady = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(
+                    DefeatQTEWidget, "_ready"sv, PapyrusInterface::ObjectVariableConfig(false, false)));
                 _defeatManager->setWidget(defeatWidget);
             }
         }
@@ -126,6 +128,12 @@ namespace SexLabDefeat {
             };
             if (!SoftDependency.ZaZ && it->GetFilename() == "ZaZAnimationPack.esm") {
                 SoftDependency.ZaZ = true;
+            };
+            if (!SoftDependency.DeviousFramework && it->GetFilename() == "DeviousFramework.esm") {
+                SoftDependency.DeviousFramework = true;
+            };
+            if (!SoftDependency.LRGPatch && it->GetFilename() == "SexLabDefeat_LRG_Patch.esp") {
+                SoftDependency.LRGPatch = true;
             };
         };
     }

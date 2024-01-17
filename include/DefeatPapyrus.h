@@ -100,7 +100,6 @@ namespace SexLabDefeat {
         using Args = RE::BSScript::IFunctionArguments;
         using Variable = RE::BSScript::Variable;
 
-
         struct ObjectVariableConfig {
             ObjectVariableConfig(bool _isProprty = true, bool _isPersistent = false)
                 : isProprty(_isProprty), isPersistent(_isPersistent){};

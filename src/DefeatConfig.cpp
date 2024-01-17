@@ -1,12 +1,12 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-
+    /*
     template float DefeatConfig::getConfig<float>(std::string configKey, float _def) const;
     template bool DefeatConfig::getConfig<bool>(std::string configKey, bool _def) const;
 
     template bool DefeatConfig::getSslConfig<bool>(std::string configKey, bool _def) const;
-
+    */
     void DefeatConfig::readIniConfig() {
         _iniConfig = boost::property_tree::ptree();
         try {
@@ -24,10 +24,114 @@ namespace SexLabDefeat {
 
     void DefeatConfig::Reset() {
         LoadScriptObjects();
-        Config.RaceAllowedNVN = DefeatConfig::StringSetVarPtr(
-            new StringSetVar(defeatconfig, "RaceAllowedNVN"sv, PapyrusInterface::ObjectVariableConfig(false)));
-        Config.RaceAllowedPvic = DefeatConfig::StringSetVarPtr(
-            new StringSetVar(defeatconfig, "RaceAllowedPvic"sv, PapyrusInterface::ObjectVariableConfig(false)));
+        
+#define BOOL_PROPERTY(NAME)                                                                 \
+        Config.NAME = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(                  \
+            DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+
+#define FLOAT_PROPERTY(NAME)                                            \
+        Config.NAME = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar( \
+        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+
+
+        
+        FLOAT_PROPERTY(PvicRaped);
+        FLOAT_PROPERTY(NVNRapedFollower);
+        FLOAT_PROPERTY(NVNRaped);
+        BOOL_PROPERTY(EveryonePvic);
+        BOOL_PROPERTY(HuntCrea);
+
+        BOOL_PROPERTY(SexualityPvic);
+        BOOL_PROPERTY(SexualityNVN);
+        BOOL_PROPERTY(MaleHunterPvic);
+        BOOL_PROPERTY(FemaleHunterPvic);
+        BOOL_PROPERTY(HuntFCrea);
+        BOOL_PROPERTY(MaleOnGal);
+        BOOL_PROPERTY(GalOnGal);
+        BOOL_PROPERTY(MaleOnMale);
+        BOOL_PROPERTY(GalOnMale);
+        BOOL_PROPERTY(CreaOnFemale);
+        BOOL_PROPERTY(CreaFemaleOnFemale);
+        BOOL_PROPERTY(CreaFemaleOnMale);
+        BOOL_PROPERTY(CreaOnMale);
+        BOOL_PROPERTY(BeastImmunity);
+
+
+        BOOL_PROPERTY(KDWayThreshold);
+        BOOL_PROPERTY(KDHealthBlock);
+        FLOAT_PROPERTY(ChanceOnHitPvic);
+        FLOAT_PROPERTY(ThresholdPvic);
+        FLOAT_PROPERTY(ThresholdPvicMin);
+        FLOAT_PROPERTY(KnockOutHPvic);
+        FLOAT_PROPERTY(SStruggleHealthPvic);
+
+        BOOL_PROPERTY(KDWayStamina);
+        BOOL_PROPERTY(KDStaminaBlock);
+        BOOL_PROPERTY(KDWayStaminaOB);
+        FLOAT_PROPERTY(ChanceOnHitPvicS);
+        FLOAT_PROPERTY(ExhaustionPvic);
+        FLOAT_PROPERTY(KnockOutSPvic);
+        FLOAT_PROPERTY(SStruggleExhaustionPvic);
+
+        BOOL_PROPERTY(KDWayPowerAtk);
+        FLOAT_PROPERTY(KDWayPowerAtkCOH);
+        FLOAT_PROPERTY(PowerAtkStagger);
+        FLOAT_PROPERTY(KnockOutPPvic);
+        FLOAT_PROPERTY(SStrugglePowerPvic);
+
+        BOOL_PROPERTY(bResistQTE);
+
+#undef BOOL_PROPERTY
+#undef FLOAT_PROPERTY
+
+#define BOOL_PROPERTY_LRG(NAME)                                                        \
+    Config.LRGPatch.NAME = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar( \
+        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+
+#define FLOAT_PROPERTY_LRG(NAME)                                                         \
+    Config.LRGPatch.NAME = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar( \
+        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+
+        /* LRG */
+        BOOL_PROPERTY_LRG(KDWayVulnerability);
+        BOOL_PROPERTY_LRG(KDVulnerabilityBlock);
+        BOOL_PROPERTY_LRG(KDWayVulnerabilityOB);
+        FLOAT_PROPERTY_LRG(ChanceOnHitPvicVulnerability);
+        FLOAT_PROPERTY_LRG(VulnerabilityPvic);
+        FLOAT_PROPERTY_LRG(KnockOutVulnerabilityPvic);
+        FLOAT_PROPERTY_LRG(SStruggleVulnerabilityPvic);
+
+        BOOL_PROPERTY_LRG(KDWayDynamic);
+        FLOAT_PROPERTY_LRG(KnockOutDynamicPvic);
+        FLOAT_PROPERTY_LRG(SStruggleDynamicPvic);
+        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBase);
+        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitOneHand);
+        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitTwoHand);
+        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBow);
+        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitSpell);
+        FLOAT_PROPERTY_LRG(DynamicDefeatVulnerabilityMult);
+        FLOAT_PROPERTY_LRG(DynamicDefeatPowerAttackMult);
+        FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaMult);
+        FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaThreshold);
+        FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthMult);
+        FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthThreshold);
+        FLOAT_PROPERTY_LRG(DynamicDefeatBackHitMult);
+        FLOAT_PROPERTY_LRG(DynamicDefeatBlockReduction);
+        FLOAT_PROPERTY_LRG(DynamicDefeatDepleteOverTime);
+        /* /LRG */
+#undef BOOL_PROPERTY_LRG
+#undef FLOAT_PROPERTY_LRG
+
+        Config.SexLab.UseCreatureGender = PapyrusInterface::BoolVarPtr(
+            new PapyrusInterface::BoolVar(sslSystemConfig, std::string_view("UseCreatureGender"),
+                                          PapyrusInterface::ObjectVariableConfig(true, false)));
+
+        Config.RaceAllowedNVN = PapyrusInterface::StringSetVarPtr(new PapyrusInterface::StringSetVar(
+            defeatconfig, "RaceAllowedNVN"sv, PapyrusInterface::ObjectVariableConfig(false)));
+        Config.RaceAllowedPvic = PapyrusInterface::StringSetVarPtr(new PapyrusInterface::StringSetVar(
+            defeatconfig, "RaceAllowedPvic"sv, PapyrusInterface::ObjectVariableConfig(false)));
+
+
     }
 
     void DefeatConfig::LoadScriptObjects() {
@@ -60,23 +164,8 @@ namespace SexLabDefeat {
                 SKSE::log::error("LoadForms : Not found attached Script 'sslSystemConfig'");
             }
         }
-
-        if (_defeatManager->Forms.DefeatPlayerQTE == nullptr) {
-            SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
-        } else {
-            auto defeatqtewidget =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "defeatqtewidget");
-            if (defeatqtewidget == nullptr) {
-                SKSE::log::error("LoadForms : Not found attached Script 'defeatqtewidget'");
-            } else {
-                auto var = defeatqtewidget->GetVariable("_widgetRoot");
-                if (var->IsString()) {
-                    SKSE::log::error("LoadForms : Ndefeatqtewidget: {}", var->GetString());
-                }
-            }
-        }
     }
-
+    /*
     template <class T>
     T DefeatConfig::getSslConfig(std::string configKey, T _def) const {
         if (sslSystemConfig != nullptr) {
@@ -99,17 +188,6 @@ namespace SexLabDefeat {
             SKSE::log::critical("getConfig - DefeatConfig.DefeatMCMScr is nullptr");
             return _def;
         }
-
-        // TODO: Caching?
-        auto val = _config.find(configKey);
-        if (val == _config.end()) {
-            return _def;
-        }
-        try {
-            return std::get<T>(val->second);
-        } catch (const std::bad_variant_access& ex) {
-            SKSE::log::critical("getConfig - Wrong Type of configKey: {}", ex.what());
-        }
-        return _def;
     }
+    */
 }

@@ -42,21 +42,111 @@ namespace SexLabDefeat {
 
         } Keywords;
     };
+    
+    namespace PapyrusInterface {
+        using StringSetVar = ObjectVariable<std::set<std::string_view>>;
+        using StringSetVarPtr = std::unique_ptr<StringSetVar>;
 
+        using StringVar = ObjectVariable<std::string_view>;
+        using StringVarPtr = std::unique_ptr<StringVar>;
+
+        using BoolVar = ObjectVariable<bool>;
+        using BoolVarPtr = std::unique_ptr<BoolVar>;
+
+        using FloatVar = ObjectVariable<float>;
+        using FloatVarPtr = std::unique_ptr<FloatVar>;
+    }
 
     class DefeatManager;
 
     class DefeatConfig {
     public:
-        using StringSetVar = PapyrusInterface::ObjectVariable<std::set<std::string_view>>;
-        using StringSetVarPtr = std::unique_ptr<StringSetVar>;
-
         DefeatConfig() = default;
         ~DefeatConfig() = default;
 
         struct Configuration {
-            StringSetVarPtr RaceAllowedPvic;
-            StringSetVarPtr RaceAllowedNVN;
+            PapyrusInterface::FloatVarPtr PvicRaped;
+            PapyrusInterface::FloatVarPtr NVNRapedFollower;
+            PapyrusInterface::FloatVarPtr NVNRaped;
+            PapyrusInterface::BoolVarPtr EveryonePvic;
+            PapyrusInterface::BoolVarPtr HuntCrea;
+
+            PapyrusInterface::BoolVarPtr SexualityPvic;
+            PapyrusInterface::BoolVarPtr SexualityNVN;
+            PapyrusInterface::BoolVarPtr MaleHunterPvic;
+            PapyrusInterface::BoolVarPtr FemaleHunterPvic;
+            PapyrusInterface::BoolVarPtr HuntFCrea;
+            PapyrusInterface::BoolVarPtr MaleOnGal;
+            PapyrusInterface::BoolVarPtr GalOnGal;
+            PapyrusInterface::BoolVarPtr MaleOnMale;
+            PapyrusInterface::BoolVarPtr GalOnMale;
+            PapyrusInterface::BoolVarPtr CreaOnFemale;
+            PapyrusInterface::BoolVarPtr CreaFemaleOnFemale;
+            PapyrusInterface::BoolVarPtr CreaFemaleOnMale;
+            PapyrusInterface::BoolVarPtr CreaOnMale;
+            PapyrusInterface::BoolVarPtr BeastImmunity;
+
+
+            PapyrusInterface::BoolVarPtr KDWayThreshold;
+            PapyrusInterface::BoolVarPtr KDHealthBlock;
+            PapyrusInterface::FloatVarPtr ChanceOnHitPvic;
+            PapyrusInterface::FloatVarPtr ThresholdPvic;
+            PapyrusInterface::FloatVarPtr ThresholdPvicMin;
+            PapyrusInterface::FloatVarPtr KnockOutHPvic;
+            PapyrusInterface::FloatVarPtr SStruggleHealthPvic;
+
+            PapyrusInterface::BoolVarPtr KDWayStamina;
+            PapyrusInterface::BoolVarPtr KDStaminaBlock;
+            PapyrusInterface::BoolVarPtr KDWayStaminaOB;
+            PapyrusInterface::FloatVarPtr ChanceOnHitPvicS;
+            PapyrusInterface::FloatVarPtr ExhaustionPvic;
+            PapyrusInterface::FloatVarPtr KnockOutSPvic;
+            PapyrusInterface::FloatVarPtr SStruggleExhaustionPvic;
+
+
+            PapyrusInterface::BoolVarPtr KDWayPowerAtk;
+            PapyrusInterface::FloatVarPtr KDWayPowerAtkCOH;
+            PapyrusInterface::FloatVarPtr PowerAtkStagger;
+            PapyrusInterface::FloatVarPtr KnockOutPPvic;
+            PapyrusInterface::FloatVarPtr SStrugglePowerPvic;
+
+            PapyrusInterface::BoolVarPtr bResistQTE;
+
+            struct {
+                PapyrusInterface::BoolVarPtr KDWayVulnerability;
+                PapyrusInterface::BoolVarPtr KDVulnerabilityBlock;
+                PapyrusInterface::BoolVarPtr KDWayVulnerabilityOB;
+                PapyrusInterface::FloatVarPtr ChanceOnHitPvicVulnerability;
+                PapyrusInterface::FloatVarPtr VulnerabilityPvic;
+                PapyrusInterface::FloatVarPtr KnockOutVulnerabilityPvic;
+                PapyrusInterface::FloatVarPtr SStruggleVulnerabilityPvic;
+
+                PapyrusInterface::BoolVarPtr KDWayDynamic;
+                PapyrusInterface::FloatVarPtr KnockOutDynamicPvic;
+                PapyrusInterface::FloatVarPtr SStruggleDynamicPvic;
+                PapyrusInterface::FloatVarPtr DynamicDefeatOnHitBase;
+                PapyrusInterface::FloatVarPtr DynamicDefeatOnHitOneHand;
+                PapyrusInterface::FloatVarPtr DynamicDefeatOnHitTwoHand;
+                PapyrusInterface::FloatVarPtr DynamicDefeatOnHitBow;
+                PapyrusInterface::FloatVarPtr DynamicDefeatOnHitSpell;
+                PapyrusInterface::FloatVarPtr DynamicDefeatVulnerabilityMult;
+                PapyrusInterface::FloatVarPtr DynamicDefeatPowerAttackMult;
+                PapyrusInterface::FloatVarPtr DynamicDefeatLowStaminaMult;
+                PapyrusInterface::FloatVarPtr DynamicDefeatLowStaminaThreshold;
+                PapyrusInterface::FloatVarPtr DynamicDefeatLowHealthMult;
+                PapyrusInterface::FloatVarPtr DynamicDefeatLowHealthThreshold;
+                PapyrusInterface::FloatVarPtr DynamicDefeatBackHitMult;
+                PapyrusInterface::FloatVarPtr DynamicDefeatBlockReduction;
+                PapyrusInterface::FloatVarPtr DynamicDefeatDepleteOverTime;
+
+            } LRGPatch;
+
+            PapyrusInterface::StringSetVarPtr RaceAllowedPvic;
+            PapyrusInterface::StringSetVarPtr RaceAllowedNVN;
+
+            struct {
+                PapyrusInterface::BoolVarPtr UseCreatureGender;
+            } SexLab;
         } Config;
 
         void readIniConfig();
@@ -68,13 +158,13 @@ namespace SexLabDefeat {
         int CFG_LOGGING = 2;
         int HIT_SPAM_GUARD_EXPIRATION_MS = 500;
         float KD_FAR_MAX_DISTANCE = 1500.0;
-
+        /*
         template <class T>
         T getConfig(std::string configKey, T _def) const;
 
         template <class T>
         T getSslConfig(std::string configKey, T _def) const;
-
+        */
     private:
         boost::property_tree::ptree _iniConfig;
         std::map<std::string, std::variant<std::string, int, float, bool>> _config;
@@ -88,12 +178,10 @@ namespace SexLabDefeat {
 
     class DefeatWidget : public SpinLock {
     public:
-        using StringVar = PapyrusInterface::ObjectVariable<std::string_view>;
-        using StringVarPtr = std::unique_ptr<StringVar>;
-
         enum State { QTE_METER, DYNAMIC_WIDGET, NONE };
 
-        StringVarPtr widgetRoot;
+        PapyrusInterface::StringVarPtr widgetRoot;
+        PapyrusInterface::BoolVarPtr widgetReady;
 
         DefeatWidget();
         ~DefeatWidget();
@@ -109,7 +197,8 @@ namespace SexLabDefeat {
         [[nodiscard]] bool stopDynamicWidget(bool inUITask = false);
 
     protected:
-        std::string_view getWidgetRootId() const;
+        std::string_view getWidgetRootId();
+        std::string_view _rootId;
 
         RE::GPtr<RE::GFxMovieView> _hudmenu;
         RE::UI* _ui;
@@ -186,7 +275,7 @@ namespace SexLabDefeat {
         RE::FormID getActorFormId() const { return _actorFormId; };
         RE::Actor* getActor();
 
-        bool isSame(RE::Actor* actor);
+        bool isSame(RE::Actor* actor) const;
         bool isPlayer();
         float getDistanceTo(DefeatActorType target);
         float getHeadingAngle(DefeatActorType target);
@@ -385,6 +474,8 @@ namespace SexLabDefeat {
 
         struct {
             bool ZaZ = false;
+            bool DeviousFramework = true;
+            bool LRGPatch = false;
         } SoftDependency;
 
         DefeatManager(SexLabDefeat::DefeatConfig* defeatConfig);

@@ -108,6 +108,11 @@ namespace SexLabDefeat {
                 SKSE::log::error("WidgetRoot not initialized");
                 return;
             }
+
+            if (value > 0 && state == DefeatWidget::State::DYNAMIC_WIDGET && setVisible(true)) {
+                // Force visible... workaround
+            }
+
             SKSE::log::trace("DefeatWidget setPercent {}%", static_cast<int>(value * 100));
 
             const std::string method = (_widgetRoot + ".setPercent");
@@ -154,20 +159,31 @@ namespace SexLabDefeat {
     }
 
     bool DefeatWidget::stopDynamicWidget(bool inUITask) {
-        bool ret = false;
+        bool ret = true;
         spinLock();
         if (state == DefeatWidget::State::DYNAMIC_WIDGET) {
             if (setInvisible(inUITask) && setPercent(0, inUITask)) {
                 state = DefeatWidget::State::NONE;
+            } else {
+                ret = false;
             }
         }
         spinUnlock();
         return ret;
     }
-    std::string_view DefeatWidget::getWidgetRootId() const {
+    std::string_view DefeatWidget::getWidgetRootId() {
+        if (!_rootId.empty()) {
+            return _rootId;
+        }
+        auto _widgetReady = widgetReady->get();
+        if (!_widgetReady) {
+            return ""sv;
+        }
         auto _widgetRoot = widgetRoot->get();
         if (_widgetRoot.empty()) {
             widgetRoot->invalidate();
+        } else {
+            _rootId = _widgetRoot;
         }
         return _widgetRoot;
     }

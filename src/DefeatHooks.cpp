@@ -56,6 +56,20 @@ namespace EventSync {
 
             return RE::BSEventNotifyControl::kContinue;
         }
+
+    };
+
+    
+    class OnBGSEventProcessedEvent : public RE::BSTEventSink<RE::BGSEventProcessedEvent> {
+    public:
+        OnBGSEventProcessedEvent(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        ~OnBGSEventProcessedEvent() = default;
+        SexLabDefeat::DefeatManager* _defeatManager;
+
+        virtual RE::BSEventNotifyControl ProcessEvent(const RE::BGSEventProcessedEvent* a_event,
+                                                      RE::BSTEventSource<RE::BGSEventProcessedEvent>* a_eventSource) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
     };
 }
 
@@ -70,6 +84,7 @@ void SexLabDefeat::installEventSink(SexLabDefeat::DefeatManager* defeatManager) 
     if (scriptEventSource) {
         scriptEventSource->AddEventSink(new EventSync::OnTESCombatEventHandler(defeatManager));
         scriptEventSource->AddEventSink(new EventSync::OnTESHitEventHandler(defeatManager));
+        scriptEventSource->AddEventSink(new EventSync::OnBGSEventProcessedEvent(defeatManager));
         SKSE::log::info("Install EventSink post");
     } else {
         SKSE::log::critical("Install EventSink failed");

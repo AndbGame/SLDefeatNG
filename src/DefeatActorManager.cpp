@@ -1,8 +1,8 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-    extern template bool DefeatConfig::getConfig<bool>(std::string configKey, bool _def) const;
-    extern template bool DefeatConfig::getSslConfig<bool>(std::string configKey, bool _def) const;
+    /* extern template bool DefeatConfig::getConfig<bool>(std::string configKey, bool _def) const;
+    extern template bool DefeatConfig::getSslConfig<bool>(std::string configKey, bool _def) const;*/
 
     DefeatActorType DefeatActorManager::getActor(RE::Actor* actor) {
         spinLock();
@@ -46,7 +46,7 @@ namespace SexLabDefeat {
             return false;
         }
         if (!actor->HasKeywordString("ActorTypeNPC")) {
-            return _defeatManager->getConfig()->getConfig<bool>("BeastImmunity", false);
+            return _defeatManager->getConfig()->Config.BeastImmunity->get();
         }
         return true;
     }
@@ -81,7 +81,7 @@ namespace SexLabDefeat {
         return _actor;
     }
 
-    bool DefeatActor::isSame(RE::Actor* actor) { return actor->GetFormID() == getActorFormId(); }
+    bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
 
     bool DefeatActor::isPlayer() { return this->getActor()->IsPlayerRef(); }
 
@@ -384,13 +384,12 @@ namespace SexLabDefeat {
             return false;
         }
         if (isPlayer()) {
-            return _defeatManager->randomChanse(_defeatManager->getConfig()->getConfig<float>("PvicRaped", 100.0f));
+            return _defeatManager->randomChanse(_defeatManager->getConfig()->Config.PvicRaped->get());
         }
         if (isFollower()) {
-            return _defeatManager->randomChanse(
-                _defeatManager->getConfig()->getConfig<float>("NVNRapedFollower", 100.0f));
+            return _defeatManager->randomChanse(_defeatManager->getConfig()->Config.NVNRapedFollower->get());
         }
-        return _defeatManager->randomChanse(_defeatManager->getConfig()->getConfig<float>("NVNRaped", 100.0f));
+        return _defeatManager->randomChanse(_defeatManager->getConfig()->Config.NVNRaped->get());
     }
 
     void DefeatActor::setState(DefeatActor::States state) {
@@ -411,38 +410,38 @@ namespace SexLabDefeat {
         if (isPlayer()) {
             if (!aggressor->isCreature()) {
                 bool aggressorFemale = aggressor->isFemale();
-                if (!mcmConfig->getConfig<bool>("SexualityPvic", false)) {
-                    return (!aggressorFemale && mcmConfig->getConfig<bool>("MaleHunterPvic", true)) ||
-                           (aggressorFemale && mcmConfig->getConfig<bool>("FemaleHunterPvic", false));
+                if (!mcmConfig->Config.SexualityPvic->get()) {
+                    return (!aggressorFemale && mcmConfig->Config.MaleHunterPvic->get()) ||
+                           (aggressorFemale && mcmConfig->Config.FemaleHunterPvic->get());
                 } else {
                     bool victimFemale = isFemale();
                     if (!aggressorFemale && victimFemale) {  // Male on Female
-                        return mcmConfig->getConfig<bool>("MaleHunterPvic", true) &&
+                        return mcmConfig->Config.MaleHunterPvic->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && victimFemale) {  // Female on Female
-                        return mcmConfig->getConfig<bool>("FemaleHunterPvic", false) &&
+                        return mcmConfig->Config.FemaleHunterPvic->get() &&
                                (aggressor->IsGay() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && !victimFemale) {  // Female on Male
-                        return mcmConfig->getConfig<bool>("FemaleHunterPvic", false) &&
+                        return mcmConfig->Config.FemaleHunterPvic->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (!aggressorFemale && !victimFemale) {  // Male on Male
-                        return mcmConfig->getConfig<bool>("MaleHunterPvic", true) &&
+                        return mcmConfig->Config.MaleHunterPvic->get() &&
                                (aggressor->IsGay() || aggressor->IsBisexual());
                     }
                 }
             } else {
                 if (aggressor->notInFlyingState()) {
-                    if (!mcmConfig->getSslConfig<bool>("UseCreatureGender", true)) {
+                    if (!mcmConfig->Config.SexLab.UseCreatureGender->get()) {
                         return true;
                     }
                     auto gender = aggressor->getSexLabGender();  // 3 - Female creatures, returns 2 male if
                                                                  // SexLabConfig.UseCreatureGender is disabled
-                    if (gender == 2 && mcmConfig->getConfig<bool>("HuntCrea", true)) {
+                    if (gender == 2 && mcmConfig->Config.HuntCrea->get()) {
                         return true;
-                    } else if (gender == 3 && mcmConfig->getConfig<bool>("HuntFCrea", false)) {
+                    } else if (gender == 3 && mcmConfig->Config.HuntFCrea->get()) {
                         return true;
                     }
                 }
@@ -451,54 +450,53 @@ namespace SexLabDefeat {
             bool victimFemale = isFemale();
             if (!aggressor->isCreature()) {
                 bool aggressorFemale = aggressor->isFemale();
-                if (!mcmConfig->getConfig<bool>("SexualityNVN", false)) {
-                    return (!aggressorFemale && victimFemale && mcmConfig->getConfig<bool>("MaleOnGal", true)) ||
-                           (aggressorFemale && victimFemale && mcmConfig->getConfig<bool>("GalOnGal", false)) ||
-                           (!aggressorFemale && !victimFemale && mcmConfig->getConfig<bool>("MaleOnMale", false)) ||
-                           (aggressorFemale && !victimFemale && mcmConfig->getConfig<bool>("GalOnMale", false));
+                if (!mcmConfig->Config.SexualityNVN->get()) {
+                    return (!aggressorFemale && victimFemale && mcmConfig->Config.MaleOnGal->get()) ||
+                           (aggressorFemale && victimFemale && mcmConfig->Config.GalOnGal->get()) ||
+                           (!aggressorFemale && !victimFemale && mcmConfig->Config.MaleOnMale->get()) ||
+                           (aggressorFemale && !victimFemale && mcmConfig->Config.GalOnMale->get());
                 } else {
                     if (!aggressorFemale && victimFemale) {  // Male on Female
-                        return mcmConfig->getConfig<bool>("MaleOnGal", true) &&
+                        return mcmConfig->Config.MaleOnGal->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && victimFemale) {  // Female on Female
-                        return mcmConfig->getConfig<bool>("GalOnGal", false) &&
+                        return mcmConfig->Config.GalOnGal->get() &&
                                (aggressor->IsGay() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && !victimFemale) {  // Female on Male
-                        return mcmConfig->getConfig<bool>("GalOnMale", false) &&
+                        return mcmConfig->Config.GalOnMale->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (!aggressorFemale && !victimFemale) {  // Male on Male
-                        return mcmConfig->getConfig<bool>("MaleOnMale", false) &&
+                        return mcmConfig->Config.MaleOnMale->get() &&
                                (aggressor->IsGay() || aggressor->IsBisexual());
                     }
                 }
             } else {
                 if (aggressor->notInFlyingState()) {
-                    if (!mcmConfig->getSslConfig<bool>("UseCreatureGender", true)) {
+                    if (!mcmConfig->Config.SexLab.UseCreatureGender->get()) {
                         return true;
                     }
                     auto aggressorFemale = aggressor->getSexLabGender() == 3;
-                    if (!aggressorFemale && victimFemale &&
-                        mcmConfig->getConfig<bool>("CreaOnFemale", true)) {  // Male on Female
+                    if (!aggressorFemale && victimFemale && mcmConfig->Config.CreaOnFemale->get()) {  // Male on Female
                         return true;
 
                     } else if (aggressorFemale && victimFemale &&
-                               mcmConfig->getConfig<bool>("CreaFemaleOnFemale", false)) {  // Female on Female
+                               mcmConfig->Config.CreaFemaleOnFemale->get()) {  // Female on Female
                         return true;
 
                     } else if (aggressorFemale && !victimFemale &&
-                               mcmConfig->getConfig<bool>("CreaFemaleOnMale", false)) {  // Female on Male
+                               mcmConfig->Config.CreaFemaleOnMale->get()) {  // Female on Male
                         return true;
 
                     } else if (!aggressorFemale && !victimFemale &&
-                               mcmConfig->getConfig<bool>("CreaOnMale", false)) {  // Male on Male
+                               mcmConfig->Config.CreaOnMale->get()) {  // Male on Male
                         return true;
                     }
                     // Other genders
-                    if ((victimFemale && mcmConfig->getConfig<bool>("CreaOnFemale", true)) ||
-                        (!victimFemale && mcmConfig->getConfig<bool>("CreaOnMale", false))) {
+                    if ((victimFemale && mcmConfig->Config.CreaOnFemale->get()) ||
+                        (!victimFemale && mcmConfig->Config.CreaOnMale->get())) {
                         return true;
                     }
                 }
@@ -512,13 +510,13 @@ namespace SexLabDefeat {
             return false;
         }
 
-        if (isSurrender() || _defeatManager->getConfig()->getConfig<bool>("EveryonePvic", false)) {
+        if (isSurrender() || _defeatManager->getConfig()->Config.EveryonePvic->get()) {
             return true;
         } else {
             if (!aggressor->isSexLabAllowed() || !isDefeatAllowedByAgressor(aggressor)) {
                 return false;
             }
-            if (aggressor->isCreature() && !_defeatManager->getConfig()->getConfig<bool>("HuntCrea", true)) {
+            if (aggressor->isCreature() && !_defeatManager->getConfig()->Config.HuntCrea->get()) {
                 return true;
             } else {
                 // sexuality
