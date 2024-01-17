@@ -1,0 +1,11 @@
+.idea
+.vs
+.vscode/settings.json
+build
+BuildVersion.h
+cmake-build*
+CMakeFiles
+*.pex
+meta.ini
+SKSE/Plugins/SexLabDefeat.dll
+SKSE/Plugins/SexLabDefeat.pdb
