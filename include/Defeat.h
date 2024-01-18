@@ -119,6 +119,9 @@ namespace SexLabDefeat {
             PapyrusInterface::BoolVarPtr bResistQTE;
 
             struct {
+                PapyrusInterface::BoolVarPtr DeviousFrameworkON;
+                PapyrusInterface::BoolVarPtr KDWayVulnerabilityUseDFW;
+
                 PapyrusInterface::BoolVarPtr KDWayVulnerability;
                 PapyrusInterface::BoolVarPtr KDVulnerabilityBlock;
                 PapyrusInterface::BoolVarPtr KDWayVulnerabilityOB;
@@ -279,7 +282,7 @@ namespace SexLabDefeat {
         RE::Actor* getActor();
 
         bool isSame(RE::Actor* actor) const;
-        virtual bool isPlayer();
+        virtual bool isPlayer() { return false; };
         float getDistanceTo(DefeatActorType target);
         float getHeadingAngle(DefeatActorType target);
         float getActorValuePercentage(RE::ActorValue av);
@@ -347,7 +350,7 @@ namespace SexLabDefeat {
 
         std::chrono::high_resolution_clock::time_point hitImmunityExpiration;
         std::chrono::high_resolution_clock::time_point _minTime;
-        SexLabDefeat::DefeatManager* _defeatManager;
+        DefeatManager* _defeatManager;
         float _dynamicDefeat = 0;
         SpinLock* _dynamicDefeatSpinLock = nullptr;
     };
@@ -489,7 +492,7 @@ namespace SexLabDefeat {
 
         struct {
             bool ZaZ = false;
-            bool DeviousFramework = true;
+            bool DeviousFramework = false;
             bool LRGPatch = false;
         } SoftDependency;
 

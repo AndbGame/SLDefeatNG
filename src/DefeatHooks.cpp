@@ -60,15 +60,17 @@ namespace EventSync {
     };
 
 
-    class OnBGSEventProcessedEvent : public RE::BSTEventSink<RE::BGSEventProcessedEvent> {
+    class OnTESEquipEventHandler : public RE::BSTEventSink<RE::TESEquipEvent> {
     public:
-        OnBGSEventProcessedEvent(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
-        ~OnBGSEventProcessedEvent() = default;
+        OnTESEquipEventHandler(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        ~OnTESEquipEventHandler() = default;
         SexLabDefeat::DefeatManager* _defeatManager;
 
-        virtual RE::BSEventNotifyControl ProcessEvent(const RE::BGSEventProcessedEvent* a_event,
-                                                      RE::BSTEventSource<RE::BGSEventProcessedEvent>* a_eventSource) {
-            SKSE::log::info("OnBGSEventProcessedEvent");
+        virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
+                                                      RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {
+
+            SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
+                             a_event->equipped, a_event->baseObject);
             return RE::BSEventNotifyControl::kContinue;
         }
     };
@@ -85,7 +87,7 @@ void SexLabDefeat::installEventSink(SexLabDefeat::DefeatManager* defeatManager) 
     if (scriptEventSource) {
         scriptEventSource->AddEventSink(new EventSync::OnTESCombatEventHandler(defeatManager));
         scriptEventSource->AddEventSink(new EventSync::OnTESHitEventHandler(defeatManager));
-        scriptEventSource->AddEventSink(new EventSync::OnBGSEventProcessedEvent(defeatManager));
+        scriptEventSource->AddEventSink(new EventSync::OnTESEquipEventHandler(defeatManager));
         SKSE::log::info("Install EventSink post");
     } else {
         SKSE::log::critical("Install EventSink failed");

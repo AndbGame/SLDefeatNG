@@ -84,8 +84,6 @@ namespace SexLabDefeat {
 
     bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
 
-    bool DefeatActor::isPlayer() { return this->getActor()->IsPlayerRef(); }
-
     float DefeatActor::getDistanceTo(DefeatActorType target) {
         auto a1 = getActor()->GetPosition();
         auto a2 = target->getActor()->GetPosition();
@@ -276,6 +274,9 @@ namespace SexLabDefeat {
     };
 
     bool DefeatActor::isSexLabAllowed() {
+        if (!isCreature()) {
+            return true;
+        }
         bool ret;
         extraData->spinLock();
         ret = extraData->getValue().sexLabAllowed;

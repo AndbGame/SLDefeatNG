@@ -83,7 +83,13 @@ namespace SexLabDefeat {
 #define BOOL_PROPERTY_LRG(NAME)                                                        \
     Config.LRGPatch.NAME = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar( \
         [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
+                                      PapyrusInterface::ObjectVariableConfig(true, false))) 
+
+#define BOOL_PROPERTY_LRG_RESS(NAME)               \
+                               Config.LRGPatch.NAME = PapyrusInterface::BoolVarPtr(                              \
+        new PapyrusInterface::BoolVar([this] { return this->getDefeatConfigScript(); }, std::string_view(#NAME), \
                                       PapyrusInterface::ObjectVariableConfig(true, false)))
+
 
 #define FLOAT_PROPERTY_LRG(NAME)                                                         \
     Config.LRGPatch.NAME = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar( \
@@ -91,6 +97,9 @@ namespace SexLabDefeat {
                                        PapyrusInterface::ObjectVariableConfig(true, false)))
 
         /* LRG */
+        BOOL_PROPERTY_LRG(KDWayVulnerabilityUseDFW);
+        BOOL_PROPERTY_LRG_RESS(DeviousFrameworkON);
+
         BOOL_PROPERTY_LRG(KDWayVulnerability);
         BOOL_PROPERTY_LRG(KDVulnerabilityBlock);
         BOOL_PROPERTY_LRG(KDWayVulnerabilityOB);
@@ -118,6 +127,7 @@ namespace SexLabDefeat {
         FLOAT_PROPERTY_LRG(DynamicDefeatDepleteOverTime);
         /* /LRG */
 #undef BOOL_PROPERTY_LRG
+#undef BOOL_PROPERTY_LRG_RESS
 #undef FLOAT_PROPERTY_LRG
 
         Config.SexLab.UseCreatureGender = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(
