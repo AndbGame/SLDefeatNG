@@ -3,15 +3,17 @@
 namespace SexLabDefeat {
 
     template class DeferredExpiringValue<ActorExtraData>;
+    template class DeferredExpiringValue<int>;
+    template class DeferredExpiringValue<float>;
+    template class DeferredExpiringValue<bool>;
+    template class DeferredExpiringValue<std::string>;
 
     template <class T>
-    DeferredExpiringValue<T>::DeferredExpiringValue(std::unique_ptr<DeferredExpiringValueInitializer> initializer,
-                                                    int expirationMs, int accessProlongationExpireMs) {
+    DeferredExpiringValue<T>::DeferredExpiringValue(int expirationMs, int accessProlongationExpireMs) {
         _minTime = std::chrono::high_resolution_clock::time_point::min();
         _expirationTime = _minTime;
         _expiration = std::chrono::milliseconds(expirationMs);
         _accessProlongationExpireMs = std::chrono::milliseconds(accessProlongationExpireMs);
-        _initializer = std::move(initializer);
     };
 
     template <class T>
@@ -70,27 +72,5 @@ namespace SexLabDefeat {
             _expirationTime += _accessProlongationExpireMs;
         }
         spinUnlock();
-    };
-
-    template <class T>
-    void DeferredExpiringValue<T>::processCallbackStack() {
-        spinLock();
-        DeferredExpiringValueCallback* clb = nullptr;
-        if (!_callbackQueue.empty()) {
-            SKSE::log::trace("processCallbackStack start processing {} delayed callbacks", _callbackQueue.size());
-            clb = _callbackQueue.front().get();
-        }
-        spinUnlock();
-
-        while (clb != nullptr) {
-            clb->execute();
-            clb = nullptr;
-            spinLock();
-            _callbackQueue.pop();
-            if (!_callbackQueue.empty()) {
-                clb = _callbackQueue.front().get();
-            }
-            spinUnlock();
-        }
     };
 }

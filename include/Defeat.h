@@ -119,6 +119,9 @@ namespace SexLabDefeat {
             PapyrusInterface::BoolVarPtr bResistQTE;
 
             struct {
+                PapyrusInterface::BoolVarPtr DeviousFrameworkON;
+                PapyrusInterface::BoolVarPtr KDWayVulnerabilityUseDFW;
+
                 PapyrusInterface::BoolVarPtr KDWayVulnerability;
                 PapyrusInterface::BoolVarPtr KDVulnerabilityBlock;
                 PapyrusInterface::BoolVarPtr KDWayVulnerabilityOB;
@@ -235,10 +238,48 @@ namespace SexLabDefeat {
         std::function<void()> _callback;
     };
 
-    template <class T>
-    class DeferredExpiringValue : public SpinLock {
+    enum DeferredExpiringValueStatus {NOT_INITIALIZED, VALID, QUEUED, INVALIDATED};
+
+    struct DeferredPropertyDefinition {
+        std::string propertyName;
+
+        struct {
+            bool onDeath = false;
+
+            struct {
+                bool kNone = false;
+                bool kCombat = false;
+                bool kSearching = false;
+            } onCombatState;
+
+            bool onArmorEquipChange = false;
+
+            struct {
+                int expirationMs = 0;
+                int accessProlongationMs = 0;
+            } onExpiration;
+
+        } InvalidationRule;
+    };
+
+    class IDeferredExpiringValue : public SpinLock {
     public:
-        DeferredExpiringValue(std::unique_ptr<DeferredExpiringValueInitializer> initializer, int expirationMs = 0,
+        IDeferredExpiringValue() = default;
+        virtual ~IDeferredExpiringValue() = default;
+
+        bool getStatus() { return _status.load(); };
+        void accessTouch() {
+        };
+
+    protected:
+        std::atomic<DeferredExpiringValueStatus> _status = DeferredExpiringValueStatus::NOT_INITIALIZED;
+    };
+    using DeferredExpiringProperty = std::shared_ptr<IDeferredExpiringValue>;
+
+    template <class T>
+    class DeferredExpiringValue : public IDeferredExpiringValue {
+    public:
+        DeferredExpiringValue(int expirationMs = 0,
                               int accessProlongationExpireMs = 0);
         ~DeferredExpiringValue();
 
@@ -248,18 +289,178 @@ namespace SexLabDefeat {
         void initializeValue(T val);
 
     protected:
-        void accessTouch();
-        void processCallbackStack();
 
         T _value = {};
-        std::queue<std::shared_ptr<DeferredExpiringValueCallback>> _callbackQueue;
-        std::unique_ptr<DeferredExpiringValueInitializer> _initializer;
 
         std::chrono::milliseconds _expiration;
         std::chrono::milliseconds _accessProlongationExpireMs;
         std::chrono::high_resolution_clock::time_point _expirationTime;
         std::chrono::high_resolution_clock::time_point _minTime;
+    };
+    
+    using BoolDeferredType = DeferredExpiringValue<bool>;
+    using IntDeferredType = DeferredExpiringValue<int>;
+    using FloatDeferredType = DeferredExpiringValue<float>;
+    using StringDeferredType = DeferredExpiringValue<std::string>;
 
+
+    class IDeferredExpiringValueGroup : public SpinLock {
+    public:
+        IDeferredExpiringValueGroup() = default;
+        ~IDeferredExpiringValueGroup() = default;
+
+    protected:
+        std::vector<DeferredExpiringProperty> _values;
+    };
+
+    class DefeatExtraData : public IDeferredExpiringValueGroup {
+    public:
+        using RequestedExtraData = std::set<short>;
+        DefeatExtraData(std::unique_ptr<DeferredExpiringValueInitializer> initializer) {
+            _initializer = std::move(initializer);
+        };
+        ~DefeatExtraData() = default;
+
+        virtual void getCallback(std::function<void()> callback, RequestedExtraData keys) {
+            RequestedExtraData requestKeys = {};
+            RequestedExtraData queuedKeys = {};
+            RequestedExtraData validKeys = {};
+
+            spinLock();
+            for (short i = 0; i < _values.size(); i++) {
+                if (auto key = keys.find(i); key != keys.end()) {
+                    switch (_values[i]->getStatus()) {
+                        case DeferredExpiringValueStatus::VALID:
+                            validKeys.insert(*key);
+                            break;
+                        case DeferredExpiringValueStatus::QUEUED:
+                            queuedKeys.insert(*key);
+                            break;
+                        default:
+                            requestKeys.insert(*key);
+                            break;
+                    }
+                }
+            }
+            if (validKeys.size() > 0) {
+                touchAllValues(validKeys);
+            }
+
+            if (queuedKeys.size() == 0 && requestKeys.size() == 0) {
+                processCallbackStack();
+                callback();
+            } else if (queuedKeys.size() > 0 && requestKeys.size() == 0) {
+                std::shared_ptr<DeferredExpiringValueCallback> _callback =
+                    std::make_shared<DeferredExpiringValueCallback>(callback);
+                _callbackQueue.push(_callback);
+            } else if (queuedKeys.size() > 0 && requestKeys.size() > 0) {
+                SKSE::log::info("getCallback requeue!!!");
+                auto clb_nested = [=]() {
+                    RequestedExtraData keys1 = {};
+                    keys1.insert(requestKeys.begin(), requestKeys.end());
+                    keys1.insert(queuedKeys.begin(), queuedKeys.end());
+                    getCallback(callback, keys1);
+                };
+                std::shared_ptr<DeferredExpiringValueCallback> _callback =
+                    std::make_shared<DeferredExpiringValueCallback>(clb_nested);
+                _callbackQueue.push(_callback);
+            } else if (queuedKeys.size() == 0 && requestKeys.size() > 0) {
+                std::shared_ptr<DeferredExpiringValueCallback> _callback =
+                    std::make_shared<DeferredExpiringValueCallback>(callback);
+                _callbackQueue.push(_callback);
+
+                _initializer.get()->spinLock();
+                if (_initializer.get()->Status == DeferredExpiringValueInitializer::StatusType::FREE) {
+                    _initializer.get()->spinUnlock();
+                    _initializer.get()->initialize();
+                } else {
+                    _initializer.get()->spinUnlock();
+                }
+            }
+            spinUnlock();
+        };
+
+    protected:
+        std::queue<std::shared_ptr<DeferredExpiringValueCallback>> _callbackQueue;
+        std::unique_ptr<DeferredExpiringValueInitializer> _initializer;
+
+        void touchAllValues(RequestedExtraData keys) {
+            for (short i = 0; i < _values.size(); i++) {
+                if (auto key = keys.find(i); key != keys.end()) {
+                    _values[i]->accessTouch();
+                }
+            }
+        }
+
+        void processCallbackStack() {
+            spinLock();
+            DeferredExpiringValueCallback* clb = nullptr;
+            if (!_callbackQueue.empty()) {
+                SKSE::log::trace("processCallbackStack start processing {} delayed callbacks", _callbackQueue.size());
+                clb = _callbackQueue.front().get();
+            }
+            spinUnlock();
+
+            while (clb != nullptr) {
+                clb->execute();
+                clb = nullptr;
+                spinLock();
+                _callbackQueue.pop();
+                if (!_callbackQueue.empty()) {
+                    clb = _callbackQueue.front().get();
+                }
+                spinUnlock();
+            }
+        }
+    };
+
+    class DefeatActorExtraData : public DefeatExtraData {
+    public:
+        enum DataKeyType {
+            IGNORE_ACTOR_ON_HIT = 0,
+            SEXLAB_GENDER = 1,
+            SEXLAB_SEXUALITY = 2,
+            SEXLAB_ALLOWED = 3,
+            SEXLAB_RACEKEY = 4
+        };
+        DefeatActorExtraData(std::unique_ptr<DeferredExpiringValueInitializer> initializer)
+            : DefeatExtraData(std::move(initializer)) {
+            // POSITION IS IMPORTANT !!!!
+            _values.insert(_values.begin() + DataKeyType::IGNORE_ACTOR_ON_HIT, DeferredExpiringProperty(new BoolDeferredType()));
+            _values.insert(_values.begin() + DataKeyType::SEXLAB_GENDER, DeferredExpiringProperty(new IntDeferredType()));
+            _values.insert(_values.begin() + DataKeyType::SEXLAB_SEXUALITY, DeferredExpiringProperty(new IntDeferredType()));
+            _values.insert(_values.begin() + DataKeyType::SEXLAB_ALLOWED, DeferredExpiringProperty(new BoolDeferredType()));
+            _values.insert(_values.begin() + DataKeyType::SEXLAB_RACEKEY, DeferredExpiringProperty(new StringDeferredType()));
+        };
+        bool getIgnoreActorOnHit() {
+            return dynamic_cast<BoolDeferredType*>(_values[DataKeyType::IGNORE_ACTOR_ON_HIT].get())->getValue();
+        }
+        int getSexLabGender() {
+            return dynamic_cast<IntDeferredType*>(_values[DataKeyType::SEXLAB_GENDER].get())->getValue();
+        }
+        int getSexLabSexuality() {
+            return dynamic_cast<IntDeferredType*>(_values[DataKeyType::SEXLAB_SEXUALITY].get())->getValue();
+        }
+        bool getSexLabAllowed() {
+            return dynamic_cast<BoolDeferredType*>(_values[DataKeyType::SEXLAB_ALLOWED].get())->getValue();
+        }
+        std::string getSexLabRaceKey() {
+            return dynamic_cast<StringDeferredType*>(_values[DataKeyType::SEXLAB_RACEKEY].get())->getValue();
+        }
+    };
+
+    class DefeatUserExtraData : public DefeatActorExtraData {
+    public:
+        enum DataKeyType { DFW_VULNERABILITY = 5 };
+
+        DefeatUserExtraData(std::unique_ptr<DeferredExpiringValueInitializer> initializer)
+            : DefeatActorExtraData(std::move(initializer)) {
+            // POSITION IS IMPORTANT !!!!
+            _values.insert(_values.begin() + DataKeyType::DFW_VULNERABILITY, DeferredExpiringProperty(new FloatDeferredType()));
+        };
+        float getSexLabAllowed() {
+            return dynamic_cast<BoolDeferredType*>(_values[DataKeyType::DFW_VULNERABILITY].get())->getValue();
+        }
     };
 
     class DefeatActor;
@@ -334,10 +535,32 @@ namespace SexLabDefeat {
         std::atomic<bool> isSheduledDeplateDynamicDefeat = false;
 
         DeferredExpiringValue<ActorExtraData>* extraData;
+        virtual void requestExtraData(std::function<void()> callback, DefeatExtraData::RequestedExtraData keys = {}) {
+            if (!isPlayer()) {
+                keys.insert(DefeatActorExtraData::DataKeyType::IGNORE_ACTOR_ON_HIT);
+                keys.insert(DefeatActorExtraData::DataKeyType::SEXLAB_GENDER);
+                if (isCreature()) {
+                    keys.insert(DefeatActorExtraData::DataKeyType::SEXLAB_RACEKEY);
+                    keys.insert(DefeatActorExtraData::DataKeyType::SEXLAB_ALLOWED);
+                } else {
+                    keys.insert(DefeatActorExtraData::DataKeyType::SEXLAB_SEXUALITY);
+                }
+            }
+            getExtraData()->getCallback(callback, keys);
+        };
+        virtual DefeatExtraData* getExtraData() {
+            return extraData1;
+        }
+        virtual void initializeExtraDataObject() {
+            if (extraData1 == nullptr) {
+                extraData1 = new DefeatExtraData();
+            }
+        };
 
     protected:
         RE::FormID _actorFormId;
         RE::Actor* _actor;
+        DefeatExtraData* extraData1 = nullptr;
 
         float _vulnerability = 0;
 
@@ -347,7 +570,7 @@ namespace SexLabDefeat {
 
         std::chrono::high_resolution_clock::time_point hitImmunityExpiration;
         std::chrono::high_resolution_clock::time_point _minTime;
-        SexLabDefeat::DefeatManager* _defeatManager;
+        DefeatManager* _defeatManager;
         float _dynamicDefeat = 0;
         SpinLock* _dynamicDefeatSpinLock = nullptr;
     };
@@ -359,6 +582,16 @@ namespace SexLabDefeat {
         float getVulnerability() override;
 
         PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript() const;
+
+        virtual void requestExtraData(std::function<void()> callback,
+                                      DefeatExtraData::RequestedExtraData keys = {}) override;
+
+        virtual DefeatUserExtraData* getExtraData() override { return dynamic_cast<DefeatUserExtraData*>(extraData1); }
+        virtual void initializeExtraDataObject() override {
+            if (extraData1 == nullptr) {
+                extraData1 = new DefeatUserExtraData();
+            }
+        };
 
     protected:
         PapyrusInterface::FloatVarPtr _LRGVulnerabilityVar = nullptr;
@@ -489,7 +722,7 @@ namespace SexLabDefeat {
 
         struct {
             bool ZaZ = false;
-            bool DeviousFramework = true;
+            bool DeviousFramework = false;
             bool LRGPatch = false;
         } SoftDependency;
 

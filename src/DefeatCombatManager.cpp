@@ -101,6 +101,7 @@ namespace SexLabDefeat {
             if (result != HitResult::SKIP) {
                 SKSE::log::trace("calculatePlayerHit: {}", result);
                 if (_defeatManager->SoftDependency.LRGPatch) {
+                    event->target->resetDynamicDefeat();
                     auto widget = _defeatManager->getWidget();
                     if (widget != nullptr) {
                         if (!widget->stopDynamicWidget()) {
@@ -151,26 +152,31 @@ namespace SexLabDefeat {
 
         if (mcmConfig->Config.KDWayThreshold->get()) {
             if ((result = KDWayWound(event)) != HitResult::SKIP) {
+                SKSE::log::trace("KDWay - KDWayWound");
                 return result;
             }
         }
         if (mcmConfig->Config.KDWayStamina->get()) {
             if ((result = KDWayExhaustion(event)) != HitResult::SKIP) {
+                SKSE::log::trace("KDWay - KDWayExhaustion");
                 return result;
             }
         }
         if (_defeatManager->SoftDependency.LRGPatch && mcmConfig->Config.LRGPatch.KDWayVulnerability->get()) {
             if ((result = KDWayVulnerability(event)) != HitResult::SKIP) {
+                SKSE::log::trace("KDWay - KDWayVulnerability");
                 return result;
             }
         }
         if (_defeatManager->SoftDependency.LRGPatch && mcmConfig->Config.LRGPatch.KDWayDynamic->get()) {
             if ((result = KDWayDynamic(event)) != HitResult::SKIP) {
+                SKSE::log::trace("KDWay - KDWayDynamic");
                 return result;
             }
         }
         if (event->isPowerAttack && mcmConfig->Config.KDWayPowerAtk->get()) {
             if ((result = KDWayPowerAtk(event)) != HitResult::SKIP) {
+                SKSE::log::trace("KDWay - KDWayPowerAtk");
                 return result;
             }
         }

@@ -65,6 +65,7 @@ namespace SexLabDefeat {
     DefeatActor::~DefeatActor() {
         extraData->spinLock();
         delete extraData;
+        delete extraData1;
 
         if (_dynamicDefeatSpinLock != nullptr) {
             delete _dynamicDefeatSpinLock;
@@ -84,7 +85,7 @@ namespace SexLabDefeat {
 
     bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
 
-    bool DefeatActor::isPlayer() { return this->getActor()->IsPlayerRef(); }
+    bool DefeatActor::isPlayer() { return false; }
 
     float DefeatActor::getDistanceTo(DefeatActorType target) {
         auto a1 = getActor()->GetPosition();
@@ -276,6 +277,9 @@ namespace SexLabDefeat {
     };
 
     bool DefeatActor::isSexLabAllowed() {
+        if (!isCreature()) {
+            return true;
+        }
         bool ret;
         extraData->spinLock();
         ret = extraData->getValue().sexLabAllowed;
@@ -559,5 +563,15 @@ namespace SexLabDefeat {
         PapyrusInterface::ObjectPtr object = nullptr;
         vm->FindBoundObject(handle, "DefeatPlayer_Vulnerability", object);
         return object;
+    }
+
+    void DefetPlayerActor::requestExtraData(std::function<void()> callback,
+                                             DefeatExtraData::RequestedExtraData keys) {
+        if (_defeatManager->SoftDependency.LRGPatch &&
+            _defeatManager->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
+            _defeatManager->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
+            keys.insert(DefeatUserExtraData::DataKeyType::DFW_VULNERABILITY);
+        }
+        DefeatActor::requestExtraData(callback, keys);
     }
 }
