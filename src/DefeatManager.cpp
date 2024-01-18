@@ -1,5 +1,6 @@
 #include "Defeat.h"
 
+
 namespace {
 
     SexLabDefeat::DefeatManager* _defeatManager;
@@ -25,17 +26,6 @@ namespace {
         defeatActor.get()->extraData->initializeValue(data);
     }
 
-    inline void setActorVulnerability(PAPYRUSFUNCHANDLE, RE::Actor* actor, float vulnerability) {
-        if (actor == nullptr) {
-            return;
-        }
-        SKSE::log::trace("Papyrus call setActorVulnerability(<{:08X}:{}>, {})", actor->GetFormID(), actor->GetName(),
-                         static_cast<int>(vulnerability));
-
-        auto defeatActor = _defeatManager->getActorManager()->getActor(actor);
-        defeatActor->setVulnerability(vulnerability);
-    }
-
     inline void setActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string state) {
         if (actor == nullptr) {
             return;
@@ -59,7 +49,6 @@ namespace {
     { vm->RegisterFunction(#name, "defeat_skse_api", name, unhook&& loc_unhook); }
 
         REGISTERPAPYRUSFUNC(responseActorExtraData, true)
-        REGISTERPAPYRUSFUNC(setActorVulnerability, true)
         REGISTERPAPYRUSFUNC(setActorState, true)
 
 #undef REGISTERPAPYRUSFUNC
@@ -109,9 +98,11 @@ namespace SexLabDefeat {
             } else {
                 auto defeatWidget = new DefeatWidget();
                 defeatWidget->widgetRoot = PapyrusInterface::StringVarPtr(new PapyrusInterface::StringVar(
-                    DefeatQTEWidget, "_widgetRoot"sv, PapyrusInterface::ObjectVariableConfig(false, true)));
+                    [this] { return this->getDefeatQTEWidgetScript(); }, "_widgetRoot"sv,
+                                                    PapyrusInterface::ObjectVariableConfig(false, true)));
                 defeatWidget->widgetReady = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(
-                    DefeatQTEWidget, "_ready"sv, PapyrusInterface::ObjectVariableConfig(false, false)));
+                    [this] { return this->getDefeatQTEWidgetScript(); }, "_ready"sv,
+                                                  PapyrusInterface::ObjectVariableConfig(false, false)));
                 _defeatManager->setWidget(defeatWidget);
             }
         }
@@ -169,6 +160,10 @@ namespace SexLabDefeat {
         LOAD_FORM(Forms.MiscMagicEffects.HKFollowerActionEFF, RE::EffectSetting, 0x059B45, "SexLabDefeat.esp");
         LOAD_FORM(Forms.MiscMagicEffects.SexCrimeEFF, RE::EffectSetting, 0x107D97, "SexLabDefeat.esp");
         LOAD_FORM(Forms.MiscMagicEffects.NVNAssaultEFF, RE::EffectSetting, 0x06E969, "SexLabDefeat.esp");
+
+        if (SoftDependency.LRGPatch) {
+            LOAD_FORM(Forms.LRGPatch.DefeatVulnerability, RE::TESQuest, 0x000800, "SexLabDefeat_LRG_Patch.esp");
+        }
 
 #undef LOAD_FORM
     }
@@ -242,5 +237,19 @@ namespace SexLabDefeat {
             SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
                             defActor->getActor()->GetName());
         });
+    }
+    PapyrusInterface::ObjectPtr DefeatManager::getDefeatQTEWidgetScript() const {
+        if (Forms.DefeatPlayerQTE == nullptr) {
+            SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
+        } else {
+            auto DefeatQTEWidget =
+                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+            if (DefeatQTEWidget == nullptr) {
+                SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
+            } else {
+                return DefeatQTEWidget;
+            }
+        }
+        return nullptr;
     }
 }

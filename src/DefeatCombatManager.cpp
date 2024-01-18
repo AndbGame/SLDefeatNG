@@ -2,9 +2,6 @@
 
 namespace SexLabDefeat {
     extern template class DeferredExpiringValue<ActorExtraData>;
-    /*
-    extern template float DefeatConfig::getConfig<float>(std::string configKey, float _def) const;
-    */
 
     DefeatCombatManager::DefeatCombatManager(DefeatActorManager* defeatActorManager,
                                                            DefeatManager* defeatManager) {
@@ -103,6 +100,14 @@ namespace SexLabDefeat {
             auto result = KDWay(event);
             if (result != HitResult::SKIP) {
                 SKSE::log::trace("calculatePlayerHit: {}", result);
+                if (_defeatManager->SoftDependency.LRGPatch) {
+                    auto widget = _defeatManager->getWidget();
+                    if (widget != nullptr) {
+                        if (!widget->stopDynamicWidget()) {
+                            SKSE::log::error("Error on stop Dynamic Widget");
+                        }
+                    }
+                }
                 event->target->setState(DefeatActor::States::DISACTIVE);
 
                 auto vm = RE::SkyrimVM::GetSingleton();

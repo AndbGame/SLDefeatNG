@@ -1,12 +1,6 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-    /*
-    template float DefeatConfig::getConfig<float>(std::string configKey, float _def) const;
-    template bool DefeatConfig::getConfig<bool>(std::string configKey, bool _def) const;
-
-    template bool DefeatConfig::getSslConfig<bool>(std::string configKey, bool _def) const;
-    */
     void DefeatConfig::readIniConfig() {
         _iniConfig = boost::property_tree::ptree();
         try {
@@ -27,11 +21,13 @@ namespace SexLabDefeat {
         
 #define BOOL_PROPERTY(NAME)                                                                 \
         Config.NAME = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(                  \
-            DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+            [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
+                                      PapyrusInterface::ObjectVariableConfig(true, false)))
 
 #define FLOAT_PROPERTY(NAME)                                            \
         Config.NAME = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar( \
-        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+            [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
+                                       PapyrusInterface::ObjectVariableConfig(true, false)))
 
 
         
@@ -86,11 +82,13 @@ namespace SexLabDefeat {
 
 #define BOOL_PROPERTY_LRG(NAME)                                                        \
     Config.LRGPatch.NAME = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar( \
-        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+        [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
+                                      PapyrusInterface::ObjectVariableConfig(true, false)))
 
 #define FLOAT_PROPERTY_LRG(NAME)                                                         \
     Config.LRGPatch.NAME = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar( \
-        DefeatMCMScr, std::string_view(#NAME), PapyrusInterface::ObjectVariableConfig(true, false)))
+        [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
+                                       PapyrusInterface::ObjectVariableConfig(true, false)))
 
         /* LRG */
         BOOL_PROPERTY_LRG(KDWayVulnerability);
@@ -122,14 +120,16 @@ namespace SexLabDefeat {
 #undef BOOL_PROPERTY_LRG
 #undef FLOAT_PROPERTY_LRG
 
-        Config.SexLab.UseCreatureGender = PapyrusInterface::BoolVarPtr(
-            new PapyrusInterface::BoolVar(sslSystemConfig, std::string_view("UseCreatureGender"),
+        Config.SexLab.UseCreatureGender = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(
+            [this] { return this->getSslSystemConfigScript(); }, std::string_view("UseCreatureGender"),
                                           PapyrusInterface::ObjectVariableConfig(true, false)));
 
-        Config.RaceAllowedNVN = PapyrusInterface::StringSetVarPtr(new PapyrusInterface::StringSetVar(
-            defeatconfig, "RaceAllowedNVN"sv, PapyrusInterface::ObjectVariableConfig(false)));
-        Config.RaceAllowedPvic = PapyrusInterface::StringSetVarPtr(new PapyrusInterface::StringSetVar(
-            defeatconfig, "RaceAllowedPvic"sv, PapyrusInterface::ObjectVariableConfig(false)));
+        Config.RaceAllowedNVN = PapyrusInterface::StringSetVarPtr(
+            new PapyrusInterface::StringSetVar([this] { return this->getDefeatConfigScript(); }, "RaceAllowedNVN"sv,
+                                               PapyrusInterface::ObjectVariableConfig(false)));
+        Config.RaceAllowedPvic = PapyrusInterface::StringSetVarPtr(
+            new PapyrusInterface::StringSetVar([this] { return this->getDefeatConfigScript(); }, "RaceAllowedPvic"sv,
+                                               PapyrusInterface::ObjectVariableConfig(false)));
 
 
     }
@@ -165,29 +165,7 @@ namespace SexLabDefeat {
             }
         }
     }
-    /*
-    template <class T>
-    T DefeatConfig::getSslConfig(std::string configKey, T _def) const {
-        if (sslSystemConfig != nullptr) {
-            T ret = ::SexLabDefeat::Papyrus::GetProperty<T>(sslSystemConfig, configKey);
-            // SKSE::log::trace("getSslConfig({}) = {}", configKey, ret);
-            return ret;
-        } else {
-            SKSE::log::critical("getSslConfig - DefeatConfig.sslSystemConfig is nullptr");
-            return _def;
-        }
-    }
-
-    template <class T>
-    T DefeatConfig::getConfig(std::string configKey, T _def) const {
-        if (DefeatMCMScr != nullptr) {
-            T ret = ::SexLabDefeat::Papyrus::GetProperty<T>(DefeatMCMScr, configKey);
-            // SKSE::log::trace("getConfig({}) = {}", configKey, ret);
-            return ret;
-        } else {
-            SKSE::log::critical("getConfig - DefeatConfig.DefeatMCMScr is nullptr");
-            return _def;
-        }
-    }
-    */
+    PapyrusInterface::ObjectPtr DefeatConfig::getDefeatMCMScript() { return DefeatMCMScr; }
+    PapyrusInterface::ObjectPtr DefeatConfig::getDefeatConfigScript() { return defeatconfig; }
+    PapyrusInterface::ObjectPtr DefeatConfig::getSslSystemConfigScript() { return sslSystemConfig; }
 }

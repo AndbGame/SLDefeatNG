@@ -11,36 +11,42 @@
 namespace SexLabDefeat {
 
     struct DefeatForms {
-        RE::TESQuest* DefeatRessourcesQst;
-        RE::TESQuest* DefeatMCMQst;
-        RE::TESQuest* DefeatPlayerQTE;
+        RE::TESQuest* DefeatRessourcesQst = nullptr;
+        RE::TESQuest* DefeatMCMQst = nullptr;
+        RE::TESQuest* DefeatPlayerQTE = nullptr;
 
-        RE::TESQuest* SexLabQuestFramework;
+        RE::TESQuest* SexLabQuestFramework = nullptr;
 
-        RE::SpellItem* SatisfiedSPL;
+        RE::SpellItem* SatisfiedSPL = nullptr;
 
         struct {
-            RE::TESQuest* PlayerQST;
-            RE::TESQuest* PAQst;
-            RE::TESQuest* PlayerActionQst;
-            RE::TESQuest* NPCsQst;
-            RE::TESQuest* NPCsRefreshQst;
-            RE::TESQuest* Robber;
-            RE::TESQuest* DGIntimidateQuest;
-            RE::TESQuest* WerewolfQst;
+            RE::TESQuest* PlayerQST = nullptr;
+            RE::TESQuest* PAQst = nullptr;
+            RE::TESQuest* PlayerActionQst = nullptr;
+            RE::TESQuest* NPCsQst = nullptr;
+            RE::TESQuest* NPCsRefreshQst = nullptr;
+            RE::TESQuest* Robber = nullptr;
+            RE::TESQuest* DGIntimidateQuest = nullptr;
+            RE::TESQuest* WerewolfQst = nullptr;
         } MiscQuests;
 
         struct {
-            RE::EffectSetting* ImmunityEFF;
-            RE::EffectSetting* HKActionEFF;
-            RE::EffectSetting* HKFollowerActionEFF;
-            RE::EffectSetting* SexCrimeEFF;
-            RE::EffectSetting* NVNAssaultEFF;
+            RE::EffectSetting* ImmunityEFF = nullptr;
+            RE::EffectSetting* HKActionEFF = nullptr;
+            RE::EffectSetting* HKFollowerActionEFF = nullptr;
+            RE::EffectSetting* SexCrimeEFF = nullptr;
+            RE::EffectSetting* NVNAssaultEFF = nullptr;
         } MiscMagicEffects;
+
+        struct {
+            RE::TESQuest* DefeatVulnerability = nullptr;
+        } LRGPatch;
 
         struct {
 
         } Keywords;
+
+        //RE::Actor* Player;
     };
     
     namespace PapyrusInterface {
@@ -154,26 +160,23 @@ namespace SexLabDefeat {
         void Reset();
         void LoadScriptObjects();
 
+        PapyrusInterface::ObjectPtr getDefeatMCMScript();
+        PapyrusInterface::ObjectPtr getDefeatConfigScript();
+        PapyrusInterface::ObjectPtr getSslSystemConfigScript();
+
         bool CFG_PAPYUNHOOK = true;
         int CFG_LOGGING = 2;
         int HIT_SPAM_GUARD_EXPIRATION_MS = 500;
         float KD_FAR_MAX_DISTANCE = 1500.0;
-        /*
-        template <class T>
-        T getConfig(std::string configKey, T _def) const;
-
-        template <class T>
-        T getSslConfig(std::string configKey, T _def) const;
-        */
     private:
         boost::property_tree::ptree _iniConfig;
         std::map<std::string, std::variant<std::string, int, float, bool>> _config;
 
         SexLabDefeat::DefeatManager* _defeatManager;
 
-        RE::BSTSmartPointer<RE::BSScript::Object> DefeatMCMScr;
-        RE::BSTSmartPointer<RE::BSScript::Object> defeatconfig;
-        RE::BSTSmartPointer<RE::BSScript::Object> sslSystemConfig;
+        PapyrusInterface::ObjectPtr DefeatMCMScr;
+        PapyrusInterface::ObjectPtr defeatconfig;
+        PapyrusInterface::ObjectPtr sslSystemConfig;
     };
 
     class DefeatWidget : public SpinLock {
@@ -276,7 +279,7 @@ namespace SexLabDefeat {
         RE::Actor* getActor();
 
         bool isSame(RE::Actor* actor) const;
-        bool isPlayer();
+        virtual bool isPlayer();
         float getDistanceTo(DefeatActorType target);
         float getHeadingAngle(DefeatActorType target);
         float getActorValuePercentage(RE::ActorValue av);
@@ -302,7 +305,7 @@ namespace SexLabDefeat {
         States getState();
         void setState(States state);
 
-        float getVulnerability();
+        virtual float getVulnerability();
         void setVulnerability(float vulnerability);
 
         /* DeferredExpiringValue */
@@ -347,6 +350,18 @@ namespace SexLabDefeat {
         SexLabDefeat::DefeatManager* _defeatManager;
         float _dynamicDefeat = 0;
         SpinLock* _dynamicDefeatSpinLock = nullptr;
+    };
+
+    class DefetPlayerActor : public DefeatActor {
+    public:
+        DefetPlayerActor(RE::Actor* actor, DefeatManager* defeatManager);
+        bool isPlayer() override { return true; };
+        float getVulnerability() override;
+
+        PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript() const;
+
+    protected:
+        PapyrusInterface::FloatVarPtr _LRGVulnerabilityVar = nullptr;
     };
 
     class DefeatActorManager : public SpinLock {
@@ -486,6 +501,7 @@ namespace SexLabDefeat {
         GameState getGameState();
         void setGameState(GameState state);
         void ActorEnterdToCombatState(RE::Actor* target_actor);
+        PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
 
         bool randomChanse(float chanse, float min = 1, float max = 100);
 

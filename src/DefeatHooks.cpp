@@ -59,7 +59,7 @@ namespace EventSync {
 
     };
 
-    
+
     class OnBGSEventProcessedEvent : public RE::BSTEventSink<RE::BGSEventProcessedEvent> {
     public:
         OnBGSEventProcessedEvent(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
@@ -68,6 +68,7 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::BGSEventProcessedEvent* a_event,
                                                       RE::BSTEventSource<RE::BGSEventProcessedEvent>* a_eventSource) {
+            SKSE::log::info("OnBGSEventProcessedEvent");
             return RE::BSEventNotifyControl::kContinue;
         }
     };

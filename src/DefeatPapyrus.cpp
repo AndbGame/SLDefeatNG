@@ -15,9 +15,9 @@ namespace SexLabDefeat {
         }
 
         template <typename T>
-        ObjectVariable<T>::ObjectVariable(ObjectPtr scriptObject, std::string_view a_var,
+        ObjectVariable<T>::ObjectVariable(ScriptObjectCallbackReceiver scriptObjectClb, std::string_view a_var,
                                           ObjectVariableConfig config) {
-            _scriptObject = scriptObject;
+            _scriptObjectClb = scriptObjectClb;
             _varName = a_var;
             _config = config;
         }
@@ -61,6 +61,7 @@ namespace SexLabDefeat {
 
         template <typename T>
         T ObjectVariable<T>::getFromVM(T _def) {
+            auto _scriptObject = _scriptObjectClb();
             if (_scriptObject == nullptr) {
                 _state = State::NOT_EXIST;
                 SKSE::log::critical("getFromVM - Script Object is nullptr");

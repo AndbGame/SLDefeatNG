@@ -1,8 +1,6 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-    /* extern template bool DefeatConfig::getConfig<bool>(std::string configKey, bool _def) const;
-    extern template bool DefeatConfig::getSslConfig<bool>(std::string configKey, bool _def) const;*/
 
     DefeatActorType DefeatActorManager::getActor(RE::Actor* actor) {
         spinLock();
@@ -21,9 +19,12 @@ namespace SexLabDefeat {
     void DefeatActorManager::reset() {
         spinLock();
         _actorMap.clear();
-        auto player = getActor(RE::PlayerCharacter::GetSingleton());
-        _player = player;
-        _actorMap.emplace(player->getActorFormId(), player);
+
+        auto actor = RE::PlayerCharacter::GetSingleton();
+        DefeatActorType defeatActor = std::make_shared<DefetPlayerActor>(actor, _defeatManager);
+        _actorMap.emplace(actor->GetFormID(), defeatActor);
+        _player = defeatActor;
+
         spinUnlock();
     }
 
@@ -503,7 +504,7 @@ namespace SexLabDefeat {
             }
         }
         return false;
-    };
+    }
 
     bool DefeatActor::CheckAggressor(DefeatActorType aggressor) {
         if (aggressor->isIgnoreActorOnHit()) {
@@ -524,4 +525,39 @@ namespace SexLabDefeat {
             }
         }
     };
+
+    
+    DefetPlayerActor::DefetPlayerActor(RE::Actor* actor, DefeatManager* defeatManager)
+        : DefeatActor(actor, defeatManager) {
+        _LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
+            [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
+            PapyrusInterface::ObjectVariableConfig(true, false)));
+    }
+
+    float DefetPlayerActor::getVulnerability() {
+        auto ret = _LRGVulnerabilityVar->get();
+        SKSE::log::trace("DefetPlayerActor::getVulnerability {}", static_cast<int>(ret));
+        return ret;
+    }
+
+    PapyrusInterface::ObjectPtr SexLabDefeat::DefetPlayerActor::getLRGDefeatPlayerVulnerabilityScript() const {
+        if (!_defeatManager->SoftDependency.LRGPatch || _defeatManager->Forms.LRGPatch.DefeatVulnerability == nullptr ||
+            _defeatManager->Forms.LRGPatch.DefeatVulnerability->aliases.size() == 0) {
+            return nullptr;
+        }
+        const auto alias1 = _defeatManager->Forms.LRGPatch.DefeatVulnerability->aliases[0];
+        if (alias1 == nullptr) {
+            return nullptr;
+        }
+        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias1);
+        if (refAlias == nullptr) {
+            return nullptr;
+        }
+        auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        auto policy = vm->GetObjectHandlePolicy();
+        auto handle = policy->GetHandleForObject(refAlias->GetVMTypeID(), refAlias);
+        PapyrusInterface::ObjectPtr object = nullptr;
+        vm->FindBoundObject(handle, "DefeatPlayer_Vulnerability", object);
+        return object;
+    }
 }

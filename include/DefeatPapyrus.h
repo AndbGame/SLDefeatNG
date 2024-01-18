@@ -42,22 +42,6 @@ namespace SexLabDefeat {
             return RE::BSScript::UnpackValue<T>(var);
         }
 
-        /* std::set<std::string_view> getVariableStringSet(ObjectPtr object, RE::BSFixedString a_var) {
-            std::set<std::string_view> ret;
-            auto var = object->GetVariable(a_var);
-            if (var != nullptr && var->IsArray()) {
-                auto data = var->GetArray();
-                if (data != nullptr && data.get() != nullptr) {
-                    for (RE::BSScript::Variable* it = data->begin(); it != data->end(); it++) {
-                        if (it != nullptr && it->IsString()) {
-                            ret.insert(it->GetString());
-                        }
-                    }
-                }
-            }
-            return ret;
-        }*/
-
         template <class T>
         inline void SetProperty(ObjectPtr a_obj, RE::BSFixedString a_prop, T a_val) {
             auto var = a_obj->GetProperty(a_prop);
@@ -99,6 +83,7 @@ namespace SexLabDefeat {
         using CallbackPtr = RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor>;
         using Args = RE::BSScript::IFunctionArguments;
         using Variable = RE::BSScript::Variable;
+        using ScriptObjectCallbackReceiver = std::function<ObjectPtr()>;
 
         struct ObjectVariableConfig {
             ObjectVariableConfig(bool _isProprty = true, bool _isPersistent = false)
@@ -112,7 +97,8 @@ namespace SexLabDefeat {
         class ObjectVariable: public SpinLock {
         public:
             enum State { NOT_INITIALIZED, INVALID, FETCHED, NOT_EXIST };
-            ObjectVariable(ObjectPtr scriptObject, std::string_view a_var, ObjectVariableConfig config);
+            ObjectVariable(ScriptObjectCallbackReceiver scriptObjectClb, std::string_view a_var,
+                           ObjectVariableConfig config);
             ~ObjectVariable() = default;
 
             T get(T _def = {});
@@ -125,7 +111,7 @@ namespace SexLabDefeat {
             T value;
             State _state = State::NOT_INITIALIZED;
             ObjectVariableConfig _config;
-            ObjectPtr _scriptObject;
+            ScriptObjectCallbackReceiver _scriptObjectClb;
             RE::BSFixedString _varName;
         };
 
