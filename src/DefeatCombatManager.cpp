@@ -52,7 +52,12 @@ namespace SexLabDefeat {
                 auto aggrActor = _defeatActorManager->getActor(aggr_actor);
                 defActor.get()->setLastHitAggressor(aggrActor);
                 auto hitEvent = _defeatManager->createHitEvent(target_actor, aggr_actor, event);
-                aggrActor.get()->extraData->getCallback([this, hitEvent] { this->calculatePlayerHit(hitEvent); });
+                targetActor.get()->extraData->getCallback([this, hitEvent] {
+                    if (hitEvent.aggressor != nullptr) {
+                        hitEvent.aggressor->extraData->getCallback(
+                            [this, hitEvent] { this->calculatePlayerHit(hitEvent); });
+                    };
+                });
             }
         }
     }
@@ -69,6 +74,7 @@ namespace SexLabDefeat {
             toCheck[1].actor = actor->GetFormID();
             toCheck[1].source = projectile;
         }
+        //
         auto now = std::chrono::high_resolution_clock::now();
 
         hitSpamGuardSpinLock->spinLock();
@@ -93,15 +99,17 @@ namespace SexLabDefeat {
         return false;
     }
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
-        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event->target->getActorFormId(),
-                         event->aggressor->getActorFormId());
-
-        if (event->target->CheckAggressor(event->aggressor)) {
+        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getActorFormId(),
+                         event.aggressor->getActorFormId());
+        if (event.target == nullptr || event.aggressor == nullptr) {
+            return;
+        }
+        if (event.target->CheckAggressor(event.aggressor)) {
             auto result = KDWay(event);
             if (result != HitResult::SKIP) {
                 SKSE::log::trace("calculatePlayerHit: {}", result);
                 if (_defeatManager->SoftDependency.LRGPatch) {
-                    event->target->resetDynamicDefeat();
+                    event.target->resetDynamicDefeat();
                     auto widget = _defeatManager->getWidget();
                     if (widget != nullptr) {
                         if (!widget->stopDynamicWidget()) {
@@ -109,12 +117,12 @@ namespace SexLabDefeat {
                         }
                     }
                 }
-                event->target->setState(DefeatActor::States::DISACTIVE);
+                event.target->setState(DefeatActor::States::DISACTIVE);
 
                 auto vm = RE::SkyrimVM::GetSingleton();
                 if (vm) {
                     const auto handle = vm->handlePolicy.GetHandleForObject(
-                        static_cast<RE::VMTypeID>(RE::FormType::Reference), event->target->getActor());
+                        static_cast<RE::VMTypeID>(RE::FormType::Reference), event.target->getActor());
                     if (handle && handle != vm->handlePolicy.EmptyHandle()) {
                         RE::BSFixedString eventStr = "KNONKDOWN";
                         if (result == HitResult::KNONKOUT) {
@@ -123,7 +131,7 @@ namespace SexLabDefeat {
                             eventStr = "STANDING_STRUGGLE";
                         }
 
-                        auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)event->aggressor->getActor(),
+                        auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)event.aggressor->getActor(),
                                                                    std::move(eventStr));
 
                         vm->SendAndRelayEvent(handle, OnSLDefeatPlayerKnockDownEventName, eventArgs, nullptr);
@@ -133,16 +141,16 @@ namespace SexLabDefeat {
                 // SKSE::log::trace("calculatePlayerHit: SKIP");
             }
         } else {
-            SKSE::log::trace("calculatePlayerHit: Aggressor not valid");
+            SKSE::log::trace("calculatePlayerHit: Aggressor not valid. creature: {}", event.aggressor->isCreature());
         }
     }
 
     HitResult DefeatCombatManager::KDWay(HitEventType event) {
-        if (!event->target->isKDAllowed()) {
+        if (!event.target->isKDAllowed()) {
             SKSE::log::trace("KDWay - KD Not Allowed");
             return HitResult::SKIP;
         }
-        if (event->target->getDistanceTo(event->aggressor) > _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
+        if (event.target->getDistanceTo(event.aggressor) > _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
             SKSE::log::trace("KDWay - Distance is too big");
             return HitResult::SKIP;
         }
@@ -174,7 +182,7 @@ namespace SexLabDefeat {
                 return result;
             }
         }
-        if (event->isPowerAttack && mcmConfig->Config.KDWayPowerAtk->get()) {
+        if (event.isPowerAttack && mcmConfig->Config.KDWayPowerAtk->get()) {
             if ((result = KDWayPowerAtk(event)) != HitResult::SKIP) {
                 SKSE::log::trace("KDWay - KDWayPowerAtk");
                 return result;
@@ -186,10 +194,10 @@ namespace SexLabDefeat {
 
     HitResult DefeatCombatManager::KDWayWound(HitEventType event) {
         auto mcmConfig = _defeatManager->getConfig();
-        if (event->isHitBlocked && mcmConfig->Config.KDHealthBlock->get()) {
+        if (event.isHitBlocked && mcmConfig->Config.KDHealthBlock->get()) {
             return HitResult::SKIP;
         }
-        const auto health = event->target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
+        const auto health = event.target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
 
         if (_defeatManager->randomChanse(mcmConfig->Config.ChanceOnHitPvic->get()) &&
             (health <= mcmConfig->Config.ThresholdPvic->get()) &&
@@ -198,7 +206,7 @@ namespace SexLabDefeat {
 
             HitResult result = HitResult::KNONKDOWN;
             if (_defeatManager->randomChanse(mcmConfig->Config.KnockOutHPvic->get()) &&
-                !event->target->isTied()) {
+                !event.target->isTied()) {
                 result = HitResult::KNONKOUT;
             } else {
                 if (mcmConfig->Config.bResistQTE->get() &&
@@ -213,13 +221,13 @@ namespace SexLabDefeat {
     };
     HitResult DefeatCombatManager::KDWayExhaustion(HitEventType event) {
         auto mcmConfig = _defeatManager->getConfig();
-        if (event->isHitBlocked && mcmConfig->Config.KDStaminaBlock->get()) {
+        if (event.isHitBlocked && mcmConfig->Config.KDStaminaBlock->get()) {
             return HitResult::SKIP;
         }
-        const auto stamina = event->target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
+        const auto stamina = event.target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
 
         SKSE::log::trace("KDWayExhaustion - Heading angle {} ",
-                         static_cast<int>(event->target->getHeadingAngle(event->aggressor)));
+                         static_cast<int>(event.target->getHeadingAngle(event.aggressor)));
 
         if (KDOnlyBack(mcmConfig->Config.KDWayStaminaOB->get(), event)) {
             if (_defeatManager->randomChanse(mcmConfig->Config.ChanceOnHitPvicS->get()) &&
@@ -228,7 +236,7 @@ namespace SexLabDefeat {
 
                 HitResult result = HitResult::KNONKDOWN;
                 if (_defeatManager->randomChanse(mcmConfig->Config.KnockOutSPvic->get()) &&
-                    !event->target->isTied()) {
+                    !event.target->isTied()) {
                     result = HitResult::KNONKOUT;
                 } else {
                     if (mcmConfig->Config.bResistQTE->get() &&
@@ -244,13 +252,13 @@ namespace SexLabDefeat {
     };
     HitResult DefeatCombatManager::KDWayVulnerability(HitEventType event) {
         auto mcmConfig = _defeatManager->getConfig();
-        if (event->isHitBlocked && mcmConfig->Config.LRGPatch.KDVulnerabilityBlock->get()) {
+        if (event.isHitBlocked && mcmConfig->Config.LRGPatch.KDVulnerabilityBlock->get()) {
             return HitResult::SKIP;
         }
 
         if (KDOnlyBack(mcmConfig->Config.LRGPatch.KDWayVulnerabilityOB->get(), event)) {
-            // TODO: DFW_GetVulnerability
-            auto vulnerability = event->target->getVulnerability();
+
+            auto vulnerability = event.target->getVulnerability();
 
             if (_defeatManager->randomChanse(mcmConfig->Config.LRGPatch.ChanceOnHitPvicVulnerability->get()) &&
                 (vulnerability >= mcmConfig->Config.LRGPatch.VulnerabilityPvic->get())) {
@@ -258,10 +266,10 @@ namespace SexLabDefeat {
 
                 HitResult result = HitResult::SKIP;
                 if (_defeatManager->randomChanse(mcmConfig->Config.LRGPatch.KnockOutVulnerabilityPvic->get()) &&
-                    !event->target->isTied()) {
+                    !event.target->isTied()) {
                     result = HitResult::KNONKOUT;
                 } else {
-                    auto form = event->aggressor->getEquippedSource(event->source);
+                    auto form = event.aggressor->getEquippedSource(event.source);
                     if (form != nullptr) {
                         auto formType = form->GetFormType();
                         if (formType == RE::FormType::Weapon || formType == RE::FormType::Spell) {
@@ -285,8 +293,8 @@ namespace SexLabDefeat {
         auto mcmConfig = _defeatManager->getConfig();
 
         // event->target->getDynamicDefeatSpinLock()->spinLock();
-        event->target->incrementDynamicDefeat(DefeatAmount);
-        auto totalDynamicDefeat = event->target->getDynamicDefeat();
+        event.target->incrementDynamicDefeat(DefeatAmount);
+        auto totalDynamicDefeat = event.target->getDynamicDefeat();
 
         if (widget->getState() != DefeatWidget::State::DYNAMIC_WIDGET && totalDynamicDefeat > 0) {
             if (!widget->startDynamicWidget()) {
@@ -298,11 +306,11 @@ namespace SexLabDefeat {
             if (!widget->stopDynamicWidget()) {
                 SKSE::log::error("Error on stop Dynamic Widget");
             }
-            event->target->resetDynamicDefeat();
+            event.target->resetDynamicDefeat();
 
             HitResult result = HitResult::KNONKDOWN;
             if (_defeatManager->randomChanse(mcmConfig->Config.LRGPatch.KnockOutDynamicPvic->get()) &&
-                !event->target->isTied()) {
+                !event.target->isTied()) {
                 result = HitResult::KNONKOUT;
             } else {
                 if (mcmConfig->Config.bResistQTE->get() &&
@@ -413,7 +421,7 @@ namespace SexLabDefeat {
         float DefeatBackHit = 0;
         float DefeatBlockReduction = 1.0;
 
-        auto form = event->aggressor->getEquippedSource(event->source);
+        auto form = event.aggressor->getEquippedSource(event.source);
         RE::FormType formType = RE::FormType::None;
         RE::TESObjectWEAP* weap = nullptr;
         if (form != nullptr) {
@@ -454,27 +462,14 @@ namespace SexLabDefeat {
             SKSE::log::trace("CalculateWidget - WeaponType: Spell");
         }
 
-        if (false) {
-            SKSE::log::trace("CalculateWidget - DeviousFrameworkON");
-            /* TODO: DeviousFramework
-            If RessConfig.DeviousFrameworkON && McmConfig.DynamicDefeatUseDFWVulnerability
-                DefeatLog("[Defeat] - CalculateWidget - DeviousFrameworkON")
-                if McmConfig.DynamicDefeatVulnerabilityMult > 1.0
-                    float PlayerVulnerability = DefeatUtil2.DFW_GetVulnerability(Player)
-                    if PlayerVulnerability > 0
-                        DefeatVulnerabilityMult = (PlayerVulnerability / 100) *
-            (McmConfig.DynamicDefeatVulnerabilityMult - 1) endif endif
-            */
-        } else {
-            SKSE::log::trace("CalculateWidget - Vulnerability");
-            auto DynamicDefeatVulnerabilityMult = mcmConfig->Config.LRGPatch.DynamicDefeatVulnerabilityMult->get();
-            if (DynamicDefeatVulnerabilityMult > 1) {
-                auto vulnerability = event->target->getVulnerability();
-                DefeatVulnerabilityMult = (vulnerability / 100) * (DynamicDefeatVulnerabilityMult - 1);
-            }
+        SKSE::log::trace("CalculateWidget - Vulnerability");
+        auto DynamicDefeatVulnerabilityMult = mcmConfig->Config.LRGPatch.DynamicDefeatVulnerabilityMult->get();
+        if (DynamicDefeatVulnerabilityMult > 1) {
+            auto vulnerability = event.target->getVulnerability();
+            DefeatVulnerabilityMult = (vulnerability / 100) * (DynamicDefeatVulnerabilityMult - 1);
         }
 
-        if (event->isPowerAttack) {
+        if (event.isPowerAttack) {
             DefeatPowerAttackMult = mcmConfig->Config.LRGPatch.DynamicDefeatPowerAttackMult->get() - 1;
         }
 
@@ -484,14 +479,14 @@ namespace SexLabDefeat {
         auto DynamicDefeatBlockReduction = mcmConfig->Config.LRGPatch.DynamicDefeatBlockReduction->get();
 
         if (DynamicDefeatLowStaminaMult > 1.0) {
-            const auto stamina = event->target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
+            const auto stamina = event.target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
             if (stamina <= mcmConfig->Config.LRGPatch.DynamicDefeatLowStaminaThreshold->get()) {
                 DefeatLowStaminaMult = DynamicDefeatLowStaminaMult - 1;
             }
         }
 
         if (DynamicDefeatLowHealthMult > 1.0) {
-            const auto health = event->target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
+            const auto health = event.target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
             if (health <= mcmConfig->Config.LRGPatch.DynamicDefeatLowHealthThreshold->get()) {
                 DefeatLowHeathMult = DynamicDefeatLowHealthMult - 1;
             }
@@ -501,7 +496,7 @@ namespace SexLabDefeat {
             DefeatBackHit = DynamicDefeatBackHitMult - 1;
         }
 
-        if (DynamicDefeatBlockReduction > 0.0 && event->isHitBlocked) {
+        if (DynamicDefeatBlockReduction > 0.0 && event.isHitBlocked) {
             DefeatBlockReduction = (1 - DynamicDefeatBlockReduction / 100);
         }
 
@@ -523,11 +518,11 @@ namespace SexLabDefeat {
 
     HitResult DefeatCombatManager::KDWayPowerAtk(HitEventType event) {
         auto mcmConfig = _defeatManager->getConfig();
-        if (event->isHitBlocked && mcmConfig->Config.KDWayPowerAtk->get()) {
+        if (event.isHitBlocked && mcmConfig->Config.KDWayPowerAtk->get()) {
             return HitResult::SKIP;
         }
 
-        auto form = event->aggressor->getEquippedSource(event->source);
+        auto form = event.aggressor->getEquippedSource(event.source);
         if (form != nullptr && form->GetFormType() == RE::FormType::Weapon) {
             auto weap = static_cast<RE::TESObjectWEAP*>(form);
             auto stagger = weap->GetStagger() * 100;
@@ -537,7 +532,7 @@ namespace SexLabDefeat {
 
                 HitResult result = HitResult::SKIP;
                 if (_defeatManager->randomChanse(mcmConfig->Config.KnockOutPPvic->get()) &&
-                    !event->target->isTied()) {
+                    !event.target->isTied()) {
                     result = HitResult::KNONKOUT;
                 } else {
                     if (mcmConfig->Config.bResistQTE->get() &&
@@ -553,7 +548,7 @@ namespace SexLabDefeat {
     }
     bool DefeatCombatManager::KDOnlyBack(bool opt, HitEventType event) {
         if (opt) {
-            auto angle = event->target->getHeadingAngle(event->aggressor);
+            auto angle = event.target->getHeadingAngle(event.aggressor);
             if (angle < 110.0 && angle > -110.0) {
                 return false;
             }

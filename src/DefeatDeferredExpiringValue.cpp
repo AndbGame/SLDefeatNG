@@ -26,7 +26,11 @@ namespace SexLabDefeat {
             spinLock();
             std::shared_ptr<DeferredExpiringValueCallback> _callback =
                 std::make_shared<DeferredExpiringValueCallback>(callback);
-            _callbackQueue.push(_callback);
+            if (_callbackQueue.size() > 1000) {
+                SKSE::log::critical("Unexpected size of processCallbackStack '{}'. Check papyrus log", _callbackQueue.size());
+            } else {
+                _callbackQueue.push(_callback);
+            }
             spinUnlock();
             _initializer.get()->spinLock();
             if (_initializer.get()->Status == DeferredExpiringValueInitializer::StatusType::FREE) {

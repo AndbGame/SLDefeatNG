@@ -383,6 +383,7 @@ namespace SexLabDefeat {
 
     bool DefeatActor::hasSexInterestByAggressor(DefeatActorType aggressor) {
         if (aggressor->isSatisfied()) {
+            SKSE::log::trace("CheckAggressor: isSatisfied");
             return false;
         }
         if (isPlayer()) {
@@ -509,6 +510,7 @@ namespace SexLabDefeat {
 
     bool DefeatActor::CheckAggressor(DefeatActorType aggressor) {
         if (aggressor->isIgnoreActorOnHit()) {
+            SKSE::log::trace("CheckAggressor: false - isIgnoreActorOnHit");
             return false;
         }
 
@@ -530,13 +532,28 @@ namespace SexLabDefeat {
     
     DefetPlayerActor::DefetPlayerActor(RE::Actor* actor, DefeatManager* defeatManager)
         : DefeatActor(actor, defeatManager) {
-        _LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
-            [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
-            PapyrusInterface::ObjectVariableConfig(true, false)));
+        if (_defeatManager->SoftDependency.LRGPatch) {
+            _LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
+                [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
+                PapyrusInterface::ObjectVariableConfig(true, false)));
+        }
     }
 
     float DefetPlayerActor::getVulnerability() {
-        auto ret = _LRGVulnerabilityVar->get();
+        if (!_defeatManager->SoftDependency.LRGPatch) {
+            return 0;
+        }
+        float ret = 0;
+        if (_defeatManager->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
+            _defeatManager->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
+
+            extraData->spinLock();
+            ret = extraData->getValue().DFWVulnerability;
+            extraData->spinUnlock();
+
+        } else {
+            ret = _LRGVulnerabilityVar->get();
+        }
         SKSE::log::trace("DefetPlayerActor::getVulnerability {}", static_cast<int>(ret));
         return ret;
     }

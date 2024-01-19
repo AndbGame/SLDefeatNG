@@ -96,35 +96,37 @@ namespace SexLabDefeat {
         [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
                                        PapyrusInterface::ObjectVariableConfig(true, false)))
 
-        /* LRG */
-        BOOL_PROPERTY_LRG(KDWayVulnerabilityUseDFW);
-        BOOL_PROPERTY_LRG_RESS(DeviousFrameworkON);
+        if (_defeatManager->SoftDependency.LRGPatch) {
+            /* LRG */
+            BOOL_PROPERTY_LRG(KDWayVulnerabilityUseDFW);
+            BOOL_PROPERTY_LRG_RESS(DeviousFrameworkON);
 
-        BOOL_PROPERTY_LRG(KDWayVulnerability);
-        BOOL_PROPERTY_LRG(KDVulnerabilityBlock);
-        BOOL_PROPERTY_LRG(KDWayVulnerabilityOB);
-        FLOAT_PROPERTY_LRG(ChanceOnHitPvicVulnerability);
-        FLOAT_PROPERTY_LRG(VulnerabilityPvic);
-        FLOAT_PROPERTY_LRG(KnockOutVulnerabilityPvic);
-        FLOAT_PROPERTY_LRG(SStruggleVulnerabilityPvic);
+            BOOL_PROPERTY_LRG(KDWayVulnerability);
+            BOOL_PROPERTY_LRG(KDVulnerabilityBlock);
+            BOOL_PROPERTY_LRG(KDWayVulnerabilityOB);
+            FLOAT_PROPERTY_LRG(ChanceOnHitPvicVulnerability);
+            FLOAT_PROPERTY_LRG(VulnerabilityPvic);
+            FLOAT_PROPERTY_LRG(KnockOutVulnerabilityPvic);
+            FLOAT_PROPERTY_LRG(SStruggleVulnerabilityPvic);
 
-        BOOL_PROPERTY_LRG(KDWayDynamic);
-        FLOAT_PROPERTY_LRG(KnockOutDynamicPvic);
-        FLOAT_PROPERTY_LRG(SStruggleDynamicPvic);
-        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBase);
-        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitOneHand);
-        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitTwoHand);
-        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBow);
-        FLOAT_PROPERTY_LRG(DynamicDefeatOnHitSpell);
-        FLOAT_PROPERTY_LRG(DynamicDefeatVulnerabilityMult);
-        FLOAT_PROPERTY_LRG(DynamicDefeatPowerAttackMult);
-        FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaMult);
-        FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaThreshold);
-        FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthMult);
-        FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthThreshold);
-        FLOAT_PROPERTY_LRG(DynamicDefeatBackHitMult);
-        FLOAT_PROPERTY_LRG(DynamicDefeatBlockReduction);
-        FLOAT_PROPERTY_LRG(DynamicDefeatDepleteOverTime);
+            BOOL_PROPERTY_LRG(KDWayDynamic);
+            FLOAT_PROPERTY_LRG(KnockOutDynamicPvic);
+            FLOAT_PROPERTY_LRG(SStruggleDynamicPvic);
+            FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBase);
+            FLOAT_PROPERTY_LRG(DynamicDefeatOnHitOneHand);
+            FLOAT_PROPERTY_LRG(DynamicDefeatOnHitTwoHand);
+            FLOAT_PROPERTY_LRG(DynamicDefeatOnHitBow);
+            FLOAT_PROPERTY_LRG(DynamicDefeatOnHitSpell);
+            FLOAT_PROPERTY_LRG(DynamicDefeatVulnerabilityMult);
+            FLOAT_PROPERTY_LRG(DynamicDefeatPowerAttackMult);
+            FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaMult);
+            FLOAT_PROPERTY_LRG(DynamicDefeatLowStaminaThreshold);
+            FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthMult);
+            FLOAT_PROPERTY_LRG(DynamicDefeatLowHealthThreshold);
+            FLOAT_PROPERTY_LRG(DynamicDefeatBackHitMult);
+            FLOAT_PROPERTY_LRG(DynamicDefeatBlockReduction);
+            FLOAT_PROPERTY_LRG(DynamicDefeatDepleteOverTime);
+        }
         /* /LRG */
 #undef BOOL_PROPERTY_LRG
 #undef BOOL_PROPERTY_LRG_RESS

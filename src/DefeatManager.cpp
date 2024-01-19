@@ -6,13 +6,12 @@ namespace {
     SexLabDefeat::DefeatManager* _defeatManager;
 
     inline void responseActorExtraData(PAPYRUSFUNCHANDLE, RE::Actor* actor, bool ignoreActorOnHit, int sexLabGender,
-        int sexLabSexuality, bool sexLabAllowed, std::string sexLabRaceKey,
-        bool defeatAllowed2PC, bool defeatAllowed2NvN) {
+            int sexLabSexuality, bool sexLabAllowed, std::string sexLabRaceKey, float DFWVulnerability) {
         if (actor == nullptr) {
             return;
         }
-        SKSE::log::trace("Papyrus call responseActorExtraData(<{:08X}:{}>, {}, {}, {}, {}, {})", actor->GetFormID(), actor->GetName(), ignoreActorOnHit, sexLabGender, sexLabSexuality, sexLabAllowed,
-                         sexLabRaceKey);
+        SKSE::log::trace("Papyrus call responseActorExtraData(<{:08X}:{}>, {}, {}, {}, {}, {}, {})", actor->GetFormID(), actor->GetName(), ignoreActorOnHit, sexLabGender, sexLabSexuality, sexLabAllowed,
+                         sexLabRaceKey, DFWVulnerability);
 
         auto defeatActor = _defeatManager->getActorManager()->getActor(actor);
         SexLabDefeat::ActorExtraData data;
@@ -21,8 +20,7 @@ namespace {
         data.sexLabSexuality = sexLabSexuality;
         data.sexLabAllowed = sexLabAllowed;
         data.sexLabRaceKey = sexLabRaceKey;
-        //data.defeatAllowed2PC = defeatAllowed2PC;
-        //data.defeatAllowed2NvN = defeatAllowed2NvN;
+        data.DFWVulnerability = DFWVulnerability;
         defeatActor.get()->extraData->initializeValue(data);
     }
 
@@ -77,13 +75,20 @@ namespace SexLabDefeat {
     }
 
     void DefeatManager::reset() {
-        _defeatActorManager->reset();
-        _defeatCombatManager->interruptPlayerDeplateDynamicDefeat();
+        SKSE::log::info("DefeatManager re-initialize Dependency");
         initializeDependency();
+        SKSE::log::info("DefeatManager re-initialize Forms");
         initializeForms();
+        SKSE::log::info("DefeatManager re-initialize Config");
         _defeatConfig->Reset();
+        SKSE::log::info("DefeatManager re-initialize ActorManager");
+        _defeatActorManager->reset();
+        SKSE::log::info("DefeatManager re-initialize CombatManager");
+        _defeatCombatManager->interruptPlayerDeplateDynamicDefeat();
+        SKSE::log::info("DefeatManager re-initialize Widget");
         reInitializeWidget();
         setGameState(DefeatManager::GameState::IN_GAME);
+        SKSE::log::info("DefeatManager re-initialized");
     }
 
     void DefeatManager::reInitializeWidget() const {
@@ -118,12 +123,15 @@ namespace SexLabDefeat {
                 continue;
             };
             if (!SoftDependency.ZaZ && it->GetFilename() == "ZaZAnimationPack.esm") {
+                SKSE::log::info("ZaZ feature enabled");
                 SoftDependency.ZaZ = true;
             };
             if (!SoftDependency.DeviousFramework && it->GetFilename() == "DeviousFramework.esm") {
+                SKSE::log::info("DeviousFramework feature enabled");
                 SoftDependency.DeviousFramework = true;
             };
             if (!SoftDependency.LRGPatch && it->GetFilename() == "SexLabDefeat_LRG_Patch.esp") {
+                SKSE::log::info("LRGPatch feature enabled");
                 SoftDependency.LRGPatch = true;
             };
         };
@@ -168,19 +176,18 @@ namespace SexLabDefeat {
 #undef LOAD_FORM
     }
 
-    HitEventType DefeatManager::createHitEvent(RE::Actor* target_actor,
-                                                                           RE::Actor* aggr_actor,
-                                                                           RawHitEvent rawHitEvent) {
-        HitEventType event = std::make_shared<HitEvent>();
+    HitEventType DefeatManager::createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
+                                               RawHitEvent rawHitEvent) {
+        HitEventType event = {};
 
-        event->target = _defeatActorManager->getActor(target_actor);
-        event->aggressor = _defeatActorManager->getActor(aggr_actor);
-        event->source = rawHitEvent.source;
-        event->projectile = rawHitEvent.projectile;
-        event->isPowerAttack = rawHitEvent.isPowerAttack;
-        event->isSneakAttack = rawHitEvent.isSneakAttack;
-        event->isBashAttack = rawHitEvent.isBashAttack;
-        event->isHitBlocked = rawHitEvent.isHitBlocked;
+        event.target = _defeatActorManager->getActor(target_actor);
+        event.aggressor = _defeatActorManager->getActor(aggr_actor);
+        event.source = rawHitEvent.source;
+        event.projectile = rawHitEvent.projectile;
+        event.isPowerAttack = rawHitEvent.isPowerAttack;
+        event.isSneakAttack = rawHitEvent.isSneakAttack;
+        event.isBashAttack = rawHitEvent.isBashAttack;
+        event.isHitBlocked = rawHitEvent.isHitBlocked;
 
         return event;
     }

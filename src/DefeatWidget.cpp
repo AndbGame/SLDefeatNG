@@ -3,13 +3,9 @@
 namespace SexLabDefeat {
 
     DefeatWidget::DefeatWidget() {
-
-        _ui = RE::UI::GetSingleton();
-        auto loc_hud = _ui->menuMap.find("HUD Menu");
-        RE::GPtr<RE::IMenu> loc_hudmenu = loc_hud->second.menu;
-        RE::GPtr<RE::GFxMovieView> loc_movie = loc_hudmenu->uiMovie;
-
-        _hudmenu = loc_hudmenu->uiMovie;
+        if (!initialize()) {
+            SKSE::log::error("Widget initialization failed");
+        }
     }
 
     DefeatWidget::~DefeatWidget() { _hudmenu.reset(); }
@@ -171,6 +167,32 @@ namespace SexLabDefeat {
         spinUnlock();
         return ret;
     }
+    bool DefeatWidget::initialize() {
+        _ui = RE::UI::GetSingleton(); 
+        if (_ui == nullptr) {
+            SKSE::log::trace("DefeatWidget::initialize UI nullptr");
+            return false;
+        }
+        auto loc_hud = _ui->menuMap.find("HUD Menu");
+        if (loc_hud == _ui->menuMap.end()) {
+            SKSE::log::trace("DefeatWidget::initialize 'HUD Menu' not exist");
+            return false;
+        }
+        RE::GPtr<RE::IMenu> loc_hudmenu = loc_hud->second.menu;
+        if (loc_hudmenu == nullptr) {
+            SKSE::log::trace("DefeatWidget::initialize loc_hudmenu nullptr");
+            return false;
+        }
+        RE::GPtr<RE::GFxMovieView> loc_movie = loc_hudmenu->uiMovie;
+        if (loc_movie == nullptr) {
+            SKSE::log::trace("DefeatWidget::initialize loc_movie nullptr");
+            return false;
+        }
+
+        _hudmenu = loc_hudmenu->uiMovie;
+        return true;
+    }
+
     std::string_view DefeatWidget::getWidgetRootId() {
         if (!_rootId.empty()) {
             return _rootId;

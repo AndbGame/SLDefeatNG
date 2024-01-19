@@ -47,6 +47,8 @@ namespace SexLabDefeat {
         } Keywords;
 
         //RE::Actor* Player;
+
+        std::atomic<bool> isDirty = true;
     };
     
     namespace PapyrusInterface {
@@ -192,6 +194,8 @@ namespace SexLabDefeat {
         DefeatWidget();
         ~DefeatWidget();
 
+        bool isInitialized = false;
+
         [[nodiscard]] bool setVisible(bool inUITask = false);
         [[nodiscard]] bool setInvisible(bool inUITask = false);
         bool getLastVisible();
@@ -203,10 +207,12 @@ namespace SexLabDefeat {
         [[nodiscard]] bool stopDynamicWidget(bool inUITask = false);
 
     protected:
+        bool initialize();
+
         std::string_view getWidgetRootId();
         std::string_view _rootId;
 
-        RE::GPtr<RE::GFxMovieView> _hudmenu;
+        RE::GPtr<RE::GFxMovieView> _hudmenu = nullptr;
         RE::UI* _ui;
 
         float lastPercent = 0.0;
@@ -221,6 +227,7 @@ namespace SexLabDefeat {
         int sexLabSexuality = 0;
         bool sexLabAllowed = 0;
         std::string sexLabRaceKey = "";
+        float DFWVulnerability = 0;
         //bool defeatAllowed2PC = true;
         //bool defeatAllowed2NvN = true;
     };
@@ -408,8 +415,8 @@ namespace SexLabDefeat {
     public:
         HitEvent() = default;
         ~HitEvent() = default;
-        DefeatActorType target;
-        DefeatActorType aggressor;
+        DefeatActorType target = nullptr;
+        DefeatActorType aggressor = nullptr;
         HitSource source;
         HitProjectile projectile;
         bool isPowerAttack = false;
@@ -420,7 +427,7 @@ namespace SexLabDefeat {
 
     enum HitResult { SKIP, KNONKOUT, STANDING_STRUGGLE, KNONKDOWN };
 
-    using HitEventType = std::shared_ptr<HitEvent>;
+    using HitEventType = HitEvent;
 
     class DynamicDefeatDepleter;
 
