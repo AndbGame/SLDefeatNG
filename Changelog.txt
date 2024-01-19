@@ -14,3 +14,7 @@ Experimental 2
 - direct reading of script variables -  is less work on creating patches, SKSE use actual values of configs in real time... but will it work stably? need tests
 - LRG Patch is soft dependency (todo: need tests without LRG...)
 - todo: need to sort out the SpinLocks....
+
+Experimental 3
+
+- compatibility with dfwDeviousFramework finished
