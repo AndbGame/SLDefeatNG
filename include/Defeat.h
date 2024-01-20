@@ -4,6 +4,7 @@
 #include <DefeatUtils.h>
 #include <DefeatPapyrus.h>
 
+#include <DefeatActorManager.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -71,6 +72,8 @@ namespace SexLabDefeat {
     public:
         DefeatConfig() = default;
         ~DefeatConfig() = default;
+        DefeatConfig(DefeatConfig const&) = delete;
+        void operator=(DefeatConfig const& x) = delete;
 
         struct Configuration {
             PapyrusInterface::FloatVarPtr PvicRaped;
@@ -285,20 +288,6 @@ namespace SexLabDefeat {
         DefeatActor(RE::Actor* actor, DefeatManager* defeatManager);
         ~DefeatActor();
 
-        RE::FormID getActorFormId() const { return _actorFormId; };
-        RE::Actor* getActor();
-
-        bool isSame(RE::Actor* actor) const;
-        virtual bool isPlayer() { return false; };
-        float getDistanceTo(DefeatActorType target);
-        float getHeadingAngle(DefeatActorType target);
-        float getActorValuePercentage(RE::ActorValue av);
-        RE::TESForm* getEquippedSource(HitSource source);
-        bool wornHasAnyKeyword(std::list<std::string> kwds);
-
-        bool hasHitImmunity();
-        void addHitImmunity(int ms);
-        void setLastHitAggressor(DefeatActorType lastHitAggressor);
         bool isSurrender();
         bool isCreature();
         bool isFollower();
@@ -362,24 +351,14 @@ namespace SexLabDefeat {
         SpinLock* _dynamicDefeatSpinLock = nullptr;
     };
 
-    class DefetPlayerActor : public DefeatActor {
-    public:
-        DefetPlayerActor(RE::Actor* actor, DefeatManager* defeatManager);
-        bool isPlayer() override { return true; };
-        float getVulnerability() override;
-
-        PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript() const;
-
-    protected:
-        PapyrusInterface::FloatVarPtr _LRGVulnerabilityVar = nullptr;
-    };
-
     class DefeatActorManager : public SpinLock {
     public:
         DefeatActorManager(DefeatManager* defeatManager) /* : SpinLock()*/ {
             _defeatManager = defeatManager;
         };
         ~DefeatActorManager() = default;
+        DefeatActorManager(DefeatActorManager const&) = delete;
+        void operator=(DefeatActorManager const& x) = delete;
 
         void reset();
 
@@ -454,6 +433,8 @@ namespace SexLabDefeat {
         DefeatCombatManager(DefeatActorManager* defeatActorManager,
                             DefeatManager* defeatManager);
         ~DefeatCombatManager();
+        DefeatCombatManager(DefeatCombatManager const&) = delete;
+        void operator=(DefeatCombatManager const& x) = delete;
 
         DefeatManager* getDefeatManager() { return _defeatManager; };
 
@@ -504,6 +485,8 @@ namespace SexLabDefeat {
         } SoftDependency;
 
         DefeatManager(SexLabDefeat::DefeatConfig* defeatConfig);
+        DefeatManager(DefeatManager const&) = delete;
+        void operator=(DefeatManager const& x) = delete;
 
         void load();
         void reset();

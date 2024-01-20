@@ -2,6 +2,9 @@
 
 namespace SexLabDefeat {
 
+    static const std::chrono::high_resolution_clock::time_point emptyTime =
+        std::chrono::high_resolution_clock::time_point::min();
+
     class DeferredExpiringValueInitializer : public SpinLock {
     public:
         enum StatusType { FREE, BUSY } Status = StatusType::FREE;

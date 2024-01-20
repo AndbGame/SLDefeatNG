@@ -241,8 +241,7 @@ namespace SexLabDefeat {
     void DefeatManager::ActorEnterdToCombatState(RE::Actor* target_actor) {
         auto defActor = _defeatActorManager->getActor(target_actor);
         defActor.get()->extraData->getCallback([this, defActor] {
-            SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
-                            defActor->getActor()->GetName());
+            SKSE::log::info("Extra data received for <{:08X}>", defActor->getActor()->GetFormID());
         });
     }
     PapyrusInterface::ObjectPtr DefeatManager::getDefeatQTEWidgetScript() const {

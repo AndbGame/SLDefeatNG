@@ -13,6 +13,7 @@ namespace SexLabDefeat {
             defeatActor = val->second;
         }
         spinUnlock();
+        defeatActor->setActor(actor);
         return defeatActor;
     }
 
@@ -52,16 +53,6 @@ namespace SexLabDefeat {
         return true;
     }
 
-    DefeatActor::DefeatActor(RE::Actor* actor, DefeatManager* defeatManager) {
-        _defeatManager = defeatManager;
-        _actorFormId = actor->GetFormID();
-        _actor = actor;
-        _minTime = std::chrono::high_resolution_clock::time_point::min();
-        hitImmunityExpiration = _minTime;
-        extraData = new DeferredExpiringValue<ActorExtraData>(
-            std::make_unique<PapyrusInterface::DeferredActorExtraDataInitializer>(actor), 5 * 60 * 1000, 60 * 1000);
-    }
-
     DefeatActor::~DefeatActor() {
         extraData->spinLock();
         delete extraData;
@@ -69,108 +60,6 @@ namespace SexLabDefeat {
         if (_dynamicDefeatSpinLock != nullptr) {
             delete _dynamicDefeatSpinLock;
         }
-    }
-
-    RE::Actor* DefeatActor::getActor() {
-        spinLock();
-        if (_actor == nullptr) {
-            SKSE::log::critical("getActor() - actor in nullptr, try fetch");
-            auto actor = RE::TESForm::LookupByID<RE::Actor>(getActorFormId());
-            _actor = actor;
-        }
-        spinUnlock();
-        return _actor;
-    }
-
-    bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
-
-    float DefeatActor::getDistanceTo(DefeatActorType target) {
-        auto a1 = getActor()->GetPosition();
-        auto a2 = target->getActor()->GetPosition();
-        return a1.GetDistance(a2);
-    }
-
-    float DefeatActor::getHeadingAngle(DefeatActorType target) {
-        auto a1 = getActor()->GetPosition();
-        return getActor()->GetHeadingAngle(target->getActor()->GetPosition(), false);
-    }
-
-    float DefeatActor::getActorValuePercentage(RE::ActorValue av) {
-        auto actor = getActor();
-        auto actorAV = actor->AsActorValueOwner();
-
-        auto temporary = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, av);
-        auto total = actorAV->GetPermanentActorValue(av);
-        auto current = actorAV->GetActorValue(av);
-
-        return total > 0 ? current / (total + temporary) : 1.0;
-    }
-
-    RE::TESForm* DefeatActor::getEquippedSource(HitSource source) {
-        auto actor = getActor();
-        RE::TESForm* form = nullptr;
-        auto equipped_right = actor->GetEquippedObject(false);
-        if (equipped_right != nullptr && equipped_right->GetFormID() == source) {
-            form = equipped_right;
-        } else {
-            auto equipped_left = actor->GetEquippedObject(true);
-            if (equipped_left != nullptr && equipped_left->GetFormID() == source) {
-                form = equipped_left;
-            }
-        }
-        return form;
-    }
-
-    bool DefeatActor::wornHasAnyKeyword(std::list<std::string> kwds) {
-        auto actor = getActor();
-
-        bool ret = false;
-
-        auto visitor = WornVisitor([&kwds, &ret](RE::InventoryEntryData* a_entry) {
-            auto loc_object = a_entry->GetObject();
-            RE::TESObjectARMO* loc_armor = nullptr;
-            if (loc_object != nullptr && loc_object->IsArmor()) {
-                loc_armor = static_cast<RE::TESObjectARMO*>(loc_object);
-                if (loc_armor != nullptr) {
-                    for (const std::string& kwd : kwds) {
-                        SKSE::log::trace("wornHasAnyKeyword - {}:{}", loc_armor->GetFullName(), kwd);
-                        if (loc_armor->HasKeywordString(kwd)) {
-                            ret = true;
-                            return RE::BSContainer::ForEachResult::kStop;
-                        }
-                    }
-                }
-            }
-            return RE::BSContainer::ForEachResult::kContinue;
-        });
-        actor->GetInventoryChanges()->VisitWornItems(visitor);
-        return ret;
-    }
-
-    bool DefeatActor::hasHitImmunity() {
-        spinLock();
-        if (hitImmunityExpiration != _minTime) {
-            if (std::chrono::high_resolution_clock::now() < hitImmunityExpiration) {
-                spinUnlock();
-                return true;
-            } else {
-                hitImmunityExpiration = _minTime;
-            }
-        }
-        spinUnlock();
-        return false;
-    }
-
-    void DefeatActor::addHitImmunity(int ms) {
-        spinLock();
-        hitImmunityExpiration = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(ms);
-        spinUnlock();
-    }
-
-    void DefeatActor::setLastHitAggressor(DefeatActorType lastHitAggressor) {
-        spinLock();
-        _lastHitAggressor = lastHitAggressor;
-        spinUnlock();
     }
 
     bool DefeatActor::isSurrender() {

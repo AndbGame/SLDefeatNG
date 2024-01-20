@@ -69,15 +69,63 @@ namespace EventSync {
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {
 
-            SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
-                             a_event->equipped, a_event->baseObject);
+            //SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
+            //                 a_event->equipped, a_event->baseObject);
             return RE::BSEventNotifyControl::kContinue;
         }
     };
 }
 
+
+namespace stl {
+    using namespace SKSE::stl;
+
+    //void asm_replace(std::uintptr_t a_from, std::size_t a_size, std::uintptr_t a_to);
+
+    template <class T>
+    void asm_replace(std::uintptr_t a_from) {
+        asm_replace(a_from, T::size, reinterpret_cast<std::uintptr_t>(T::func));
+    }
+
+    template <class T>
+    void write_thunk_call(std::uintptr_t a_src) {
+        auto& trampoline = SKSE::GetTrampoline();
+        SKSE::AllocTrampoline(14);
+
+        T::func = trampoline.write_call<5>(a_src, T::thunk);
+    }
+
+    template <class F, size_t offset, class T>
+    void write_vfunc() {
+        REL::Relocation<std::uintptr_t> vtbl{F::VTABLE[offset]};
+        T::func = vtbl.write_vfunc(T::idx, T::thunk);
+    }
+
+    template <class F, class T>
+    void write_vfunc() {
+        write_vfunc<F, 0, T>();
+    }
+
+    inline std::string as_string(std::string_view a_view) { return {a_view.data(), a_view.size()}; }
+}
+
+    struct Load3D {
+        static RE::NiAVObject* thunk(RE::Actor* a_actor, bool a_backgroundLoading) {
+            auto* node = func(a_actor, a_backgroundLoading);
+
+            SKSE::log::trace("Load3D, {:08X} - {} - {}", a_actor->GetFormID(),
+                             a_actor->GetDisplayFullName(),
+                             a_backgroundLoading);
+            return node;
+        }
+        static inline REL::Relocation<decltype(thunk)> func;
+
+    };
+
 void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
     //SKSE::log::info("Install hooks pre");
+    REL::Relocation<std::uintptr_t> target{REL::ID(37177), 0xD};
+    stl::write_thunk_call<Load3D>(target.address());
     //SKSE::log::info("Install hooks post");
 }
 
