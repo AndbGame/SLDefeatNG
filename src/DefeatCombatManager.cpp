@@ -32,32 +32,51 @@ namespace SexLabDefeat {
             return;
         }
         if (event.aggressor != nullptr) {
-            auto aggr_actor = event.aggressor->As<RE::Actor>();
-            auto target_actor = event.target->As<RE::Actor>();
+            auto aggr_tes_actor = event.aggressor->As<RE::Actor>();
+            auto target_tes_actor = event.target->As<RE::Actor>();
 
             if (targetActor->getState() != DefeatActor::States::ACTIVE) {
                 return;
             }
 
-            if (aggr_actor && _defeatActorManager->validForAggressorRole(aggr_actor) &&
-                _defeatActorManager->validPlayerForVictimRole(target_actor)) {
+            if (aggr_tes_actor && _defeatActorManager->validForAggressorRole(aggr_tes_actor) &&
+                _defeatActorManager->validPlayerForVictimRole(target_tes_actor)) {
                 if (registerAndCheckHitGuard(event.aggressor, event.source, event.projectile)) {
                     SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
                                      event.aggressor->GetFormID(), event.aggressor->GetName());
                     return;
                 }
 
-                auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
+                auto aggrActor = _defeatActorManager->getDefeatActor(aggr_tes_actor);
                 targetActor->setLastHitAggressor(aggrActor);
-                auto hitEvent = _defeatManager->createHitEvent(target_actor, aggr_actor, event);
-                targetActor.get()->extraData->getCallback([this, hitEvent] {
-                    if (hitEvent.aggressor != nullptr) {
-                        hitEvent.aggressor->extraData->getCallback(
-                            [this, hitEvent] { this->calculatePlayerHit(hitEvent); });
-                    };
-                });
+                auto hitEvent = createHitEvent(targetActor, aggrActor, event);
+
+                if (targetActor->isExternalPapyrusDataExpired()) {
+                    _defeatActorManager->requestActorExtraData(targetActor);
+                }
+                if (aggrActor->isExternalPapyrusDataExpired()) {
+                    _defeatActorManager->requestActorExtraData(aggrActor);
+                }
+
+                calculatePlayerHit(hitEvent);
             }
         }
+    }
+
+    HitEventType DefeatCombatManager::createHitEvent(DefeatActorType target_actor, DefeatActorType aggr_actor,
+                                               RawHitEvent rawHitEvent) {
+        HitEventType event = {};
+
+        event.target = target_actor;
+        event.aggressor = aggr_actor;
+        event.source = rawHitEvent.source;
+        event.projectile = rawHitEvent.projectile;
+        event.isPowerAttack = rawHitEvent.isPowerAttack;
+        event.isSneakAttack = rawHitEvent.isSneakAttack;
+        event.isBashAttack = rawHitEvent.isBashAttack;
+        event.isHitBlocked = rawHitEvent.isHitBlocked;
+
+        return event;
     }
 
     bool DefeatCombatManager::registerAndCheckHitGuard(RE::TESObjectREFR* actor, RE::FormID source,
@@ -97,12 +116,12 @@ namespace SexLabDefeat {
         return false;
     }
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
-        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getActorFormId(),
-                         event.aggressor->getActorFormId());
+        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),
+                         event.aggressor->getTESFormId());
         if (event.target == nullptr || event.aggressor == nullptr) {
             return;
         }
-        if (event.target->CheckAggressor(event.aggressor)) {
+        if (_defeatActorManager->checkAggressor(event.target, event.aggressor)) {
             auto result = KDWay(event);
             if (result != HitResult::SKIP) {
                 SKSE::log::trace("calculatePlayerHit: {}", result);
@@ -120,7 +139,7 @@ namespace SexLabDefeat {
                 auto vm = RE::SkyrimVM::GetSingleton();
                 if (vm) {
                     const auto handle = vm->handlePolicy.GetHandleForObject(
-                        static_cast<RE::VMTypeID>(RE::FormType::Reference), event.target->getActor());
+                        static_cast<RE::VMTypeID>(RE::FormType::Reference), event.target->getTESActor());
                     if (handle && handle != vm->handlePolicy.EmptyHandle()) {
                         RE::BSFixedString eventStr = "KNONKDOWN";
                         if (result == HitResult::KNONKOUT) {
@@ -129,7 +148,7 @@ namespace SexLabDefeat {
                             eventStr = "STANDING_STRUGGLE";
                         }
 
-                        auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)event.aggressor->getActor(),
+                        auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)event.aggressor->getTESActor(),
                                                                    std::move(eventStr));
 
                         vm->SendAndRelayEvent(handle, OnSLDefeatPlayerKnockDownEventName, eventArgs, nullptr);
@@ -148,7 +167,8 @@ namespace SexLabDefeat {
             SKSE::log::trace("KDWay - KD Not Allowed");
             return HitResult::SKIP;
         }
-        if (event.target->getDistanceTo(event.aggressor) > _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
+        if (DefeatActorManager::getDistanceBetween(event.target, event.aggressor) >
+            _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
             SKSE::log::trace("KDWay - Distance is too big");
             return HitResult::SKIP;
         }

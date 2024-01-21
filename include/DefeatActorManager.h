@@ -202,6 +202,18 @@ namespace SexLabDefeat {
                 }
             }
         };
+        
+        void requestActorExtraData(DefeatActorType target) {
+            SexLabDefeat::Papyrus::CallbackPtr callback(
+                new SexLabDefeat::PapyrusInterface::EmptyRequestCallback("DeferredActorExtraDataInitializer"));
+
+            SKSE::log::trace("DeferredActorExtraDataInitializer - <{:08X}>", target->getTESFormId());
+
+            if (!SexLabDefeat::Papyrus::DispatchStaticCall("defeat_skse_api", "requestActorExtraData", callback,
+                                                           target->getTESActor())) {
+                SKSE::log::error("Failed to dispatch static call [defeat_skse_api::requestActorExtraData].");
+            }
+        };
 
         DefeatConfig* getConfig();
         DefeatForms getForms() const;
@@ -233,9 +245,9 @@ namespace SexLabDefeat {
             return true;
         }
 
-        static inline float getDistanceBetween(DefeatActor& source, DefeatActor& target) {
-            auto a1 = (&source)->getTESActor()->GetPosition();
-            auto a2 = (&target)->getTESActor()->GetPosition();
+        static inline float getDistanceBetween(DefeatActorType source, DefeatActorType target) {
+            auto a1 = source->getTESActor()->GetPosition();
+            auto a2 = target->getTESActor()->GetPosition();
             return a1.GetDistance(a2);
         }
         static inline float getHeadingAngleBetween(DefeatActor& source, DefeatActor& target) {

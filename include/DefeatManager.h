@@ -34,7 +34,6 @@ namespace SexLabDefeat {
 
         DefeatForms Forms;
 
-        HitEventType createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor, RawHitEvent rawHitEvent);
         void setWidget(SexLabDefeat::DefeatWidget* widget);
         SexLabDefeat::DefeatWidget* getWidget();
         void setActorState(RE::Actor* target_actor, DefeatActor::States state);

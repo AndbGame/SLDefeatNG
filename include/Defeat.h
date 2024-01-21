@@ -289,6 +289,9 @@ namespace SexLabDefeat {
 
         void onHitHandler(RawHitEvent event);
 
+        
+        HitEventType createHitEvent(DefeatActorType target_actor, DefeatActorType aggr_actor, RawHitEvent rawHitEvent);
+
         void calculatePlayerHit(HitEventType event);
         HitResult KDWay(HitEventType event);
         HitResult KDWayWound(HitEventType event);

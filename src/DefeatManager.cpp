@@ -175,23 +175,6 @@ namespace SexLabDefeat {
 #undef LOAD_FORM
     }
 
-    HitEventType DefeatManager::createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
-                                               RawHitEvent rawHitEvent) {
-
-        HitEventType event = {};
-
-        event.target = _defeatActorManager->getDefeatActor(target_actor);
-        event.aggressor = _defeatActorManager->getDefeatActor(aggr_actor);
-        event.source = rawHitEvent.source;
-        event.projectile = rawHitEvent.projectile;
-        event.isPowerAttack = rawHitEvent.isPowerAttack;
-        event.isSneakAttack = rawHitEvent.isSneakAttack;
-        event.isBashAttack = rawHitEvent.isBashAttack;
-        event.isHitBlocked = rawHitEvent.isHitBlocked;
-
-        return event;
-    }
-
     void DefeatManager::setWidget(DefeatWidget* widget) {
         if (_defeatWidget != nullptr) {
             _defeatWidget->spinLock();
