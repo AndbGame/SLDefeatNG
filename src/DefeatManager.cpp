@@ -13,15 +13,15 @@ namespace {
         SKSE::log::trace("Papyrus call responseActorExtraData(<{:08X}:{}>, {}, {}, {}, {}, {}, {})", actor->GetFormID(), actor->GetName(), ignoreActorOnHit, sexLabGender, sexLabSexuality, sexLabAllowed,
                          sexLabRaceKey, DFWVulnerability);
 
-        auto defeatActor = _defeatManager->getActorManager()->getActor(actor);
-        SexLabDefeat::ActorExtraData data;
-        data.ignoreActorOnHit = ignoreActorOnHit;
-        data.sexLabGender = sexLabGender;
-        data.sexLabSexuality = sexLabSexuality;
-        data.sexLabAllowed = sexLabAllowed;
-        data.sexLabRaceKey = sexLabRaceKey;
-        data.DFWVulnerability = DFWVulnerability;
-        defeatActor.get()->extraData->initializeValue(data);
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
+        SexLabDefeat::UniqueSpinLock lock(*defeatActor);
+        defeatActor->setIgnoreActorOnHit(ignoreActorOnHit);
+        defeatActor->setSexLabGender(sexLabGender);
+        defeatActor->setSexLabSexuality(sexLabSexuality);
+        defeatActor->setSexLabAllowed(sexLabAllowed);
+        defeatActor->setSexLabRaceKey(sexLabRaceKey);
+        defeatActor->setDFWVulnerability(DFWVulnerability);
+        defeatActor->setExternalPapyrusDataExpirationFor(2min);
     }
 
     inline void setActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string state) {
@@ -55,7 +55,6 @@ namespace {
 }
 
 namespace SexLabDefeat {
-    extern template class DeferredExpiringValue<ActorExtraData>;
 
     DefeatManager::DefeatManager(DefeatConfig* defeatConfig) {
         setGameState(DefeatManager::GameState::NONE);
@@ -178,10 +177,11 @@ namespace SexLabDefeat {
 
     HitEventType DefeatManager::createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
                                                RawHitEvent rawHitEvent) {
+
         HitEventType event = {};
 
-        event.target = _defeatActorManager->getActor(target_actor);
-        event.aggressor = _defeatActorManager->getActor(aggr_actor);
+        event.target = _defeatActorManager->getDefeatActor(target_actor);
+        event.aggressor = _defeatActorManager->getDefeatActor(aggr_actor);
         event.source = rawHitEvent.source;
         event.projectile = rawHitEvent.projectile;
         event.isPowerAttack = rawHitEvent.isPowerAttack;
@@ -211,7 +211,7 @@ namespace SexLabDefeat {
     }
 
     void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActor::States state) {
-        auto defeatActor = getActorManager()->getActor(target_actor);
+        auto defeatActor = getActorManager()->getDefeatActorImpl(target_actor);
         if (state != DefeatActor::States::NONE) {
             defeatActor->setState(state);
             defeatActor->resetDynamicDefeat();
@@ -239,9 +239,10 @@ namespace SexLabDefeat {
     void DefeatManager::setGameState(DefeatManager::GameState state) { _gameState.store(state); }
 
     void DefeatManager::ActorEnterdToCombatState(RE::Actor* target_actor) {
-        auto defActor = _defeatActorManager->getActor(target_actor);
+
+        auto defActor = _defeatActorManager->getDefeatActor(target_actor);
         defActor.get()->extraData->getCallback([this, defActor] {
-            SKSE::log::info("Extra data received for <{:08X}>", defActor->getActor()->GetFormID());
+            SKSE::log::info("Extra data received for <{:08X}>", defActor->getTESFormId());
         });
     }
     PapyrusInterface::ObjectPtr DefeatManager::getDefeatQTEWidgetScript() const {

@@ -1,7 +1,6 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-    extern template class DeferredExpiringValue<ActorExtraData>;
 
     DefeatCombatManager::DefeatCombatManager(DefeatActorManager* defeatActorManager,
                                                            DefeatManager* defeatManager) {
@@ -20,22 +19,21 @@ namespace SexLabDefeat {
 
     void DefeatCombatManager::onHitHandler(RawHitEvent event) {
         auto target_actor = event.target->As<RE::Actor>();
-        if (target_actor && _defeatActorManager->getPlayer() != nullptr &&
-            (_defeatActorManager->getPlayer()->isSame(target_actor))) {
-            onPlayerHitHandler(event, _defeatActorManager->getPlayer());
+        if (target_actor != nullptr &&
+            (_defeatActorManager->getPlayerImpl()->isSame(target_actor))) {
+            onPlayerHitHandler(event, _defeatActorManager->getPlayer(target_actor));
         }
     }
 
-    void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatActorType defActor) {
+    void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType targetActor) {
         SKSE::log::trace("onPlayerHitHandler");
-        if (defActor.get()->hasHitImmunity()) {
+        if (targetActor->hasHitImmunity()) {
             SKSE::log::trace("onPlayerHitHandler Hit Immunity - skipped");
             return;
         }
         if (event.aggressor != nullptr) {
             auto aggr_actor = event.aggressor->As<RE::Actor>();
             auto target_actor = event.target->As<RE::Actor>();
-            auto targetActor = _defeatActorManager->getActor(target_actor);
 
             if (targetActor->getState() != DefeatActor::States::ACTIVE) {
                 return;
@@ -49,8 +47,8 @@ namespace SexLabDefeat {
                     return;
                 }
 
-                auto aggrActor = _defeatActorManager->getActor(aggr_actor);
-                defActor.get()->setLastHitAggressor(aggrActor);
+                auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
+                targetActor->setLastHitAggressor(aggrActor);
                 auto hitEvent = _defeatManager->createHitEvent(target_actor, aggr_actor, event);
                 targetActor.get()->extraData->getCallback([this, hitEvent] {
                     if (hitEvent.aggressor != nullptr) {

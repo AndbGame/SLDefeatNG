@@ -58,6 +58,7 @@ set(source_files ${source_files}
     src/DefeatPapyrus.cpp
     src/DefeatHooks.cpp
 	src/DefeatDeferredExpiringValue.cpp
+	src/DefeatActor.cpp
     src/DefeatActorManager.cpp
     src/DefeatCombatManager.cpp
     src/DefeatManager.cpp
