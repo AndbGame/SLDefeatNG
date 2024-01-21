@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatConfig.h"
 
 namespace SexLabDefeat {
     void DefeatConfig::readIniConfig() {
@@ -14,7 +14,10 @@ namespace SexLabDefeat {
         }
     }
 
-    void DefeatConfig::Setup(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; }
+    void DefeatConfig::Setup(SexLabDefeat::DefeatManager* defeatManager) {
+        _defeatManager = defeatManager;
+        Config.PapyrusFunctionNames.OnSLDefeatPlayerKnockDownEventName = new RE::BSFixedString("OnSLDefeatPlayerKnockDown");
+    }
 
     void DefeatConfig::Reset() {
         LoadScriptObjects();

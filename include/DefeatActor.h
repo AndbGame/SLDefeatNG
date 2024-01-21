@@ -1,7 +1,8 @@
 #pragma once
 
 #include <DefeatSpinLock.h>
-#include <DefeatUtils.h>
+#include "DefeatPapyrus.h"
+#include "DefeatUtils.h"
 #include <DefeatActorManager.h>
 
 namespace SexLabDefeat {
@@ -249,7 +250,9 @@ namespace SexLabDefeat {
         bool isPlayer() override { return true; };
         float getVulnerability() override;
 
-        DefeatPlayerActorImplType getImpl() { return _impl; }
+        bool isSheduledDeplateDynamicDefeat() { return _impl->isSheduledDeplateDynamicDefeat(); }
+        bool sheduleDeplateDynamicDefeat() { return _impl->sheduleDeplateDynamicDefeat(); }
+        void stopDeplateDynamicDefeat() { _impl->stopDeplateDynamicDefeat(); }
 
     protected:
         DefeatPlayerActorImplType _impl;
@@ -361,11 +364,29 @@ namespace SexLabDefeat {
 
     class DefeatPlayerActorImpl : public DefeatActorImpl {
     public:
-        PapyrusInterface::FloatVarPtr LRGVulnerabilityVar = nullptr;
+        PapyrusInterface::FloatVarPtr LRGVulnerabilityVar;
 
         DefeatPlayerActorImpl(RE::FormID formID, DefeatActorManager* defeatActorManager);
         bool isPlayer() override { return true; };
+        bool isSheduledDeplateDynamicDefeat() {
+            UniqueSpinLock lock(*this);
+            return _isSheduledDeplateDynamicDefeat;
+        }
+        bool sheduleDeplateDynamicDefeat() {
+            UniqueSpinLock lock(*this);
+            if (_isSheduledDeplateDynamicDefeat) {
+                return false;
+            }
+            _isSheduledDeplateDynamicDefeat = true;
+            return true;
+        }
+        void stopDeplateDynamicDefeat() {
+            UniqueSpinLock lock(*this);
+            _isSheduledDeplateDynamicDefeat = false;
+        }
+
     protected:
-        PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript() {};
+        PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript();
+        std::atomic<bool> _isSheduledDeplateDynamicDefeat = false;
     };
 }

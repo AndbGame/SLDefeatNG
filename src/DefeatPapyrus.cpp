@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatPapyrus.h"
 
 namespace SexLabDefeat {
     namespace PapyrusInterface {

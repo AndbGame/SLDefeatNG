@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DefeatForms.h>
+#include <DefeatConfig.h>
 #include <DefeatActor.h>
 #include <DefeatManager.h>
 
@@ -26,7 +27,10 @@ namespace SexLabDefeat {
         }
 
         DefeatPlayerActorImplType getPlayerImpl() { return _player; }
-        DefeatPlayerActorType getPlayer(RE::Actor* actor) {
+        DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) {
+            if (actor == nullptr) {
+                actor = RE::PlayerCharacter::GetSingleton();
+            }
             auto defPlayer = getPlayerImpl();
             defPlayer->spinLock();
             auto obj = DefeatPlayerActorType(new DefeatPlayerActor(defPlayer->_data, actor, defPlayer));
@@ -215,6 +219,30 @@ namespace SexLabDefeat {
             }
         };
 
+        inline void PlayerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) {
+            auto vm = RE::SkyrimVM::GetSingleton();
+            if (vm) {
+                const auto handle = vm->handlePolicy.GetHandleForObject(
+                    static_cast<RE::VMTypeID>(RE::FormType::Reference), target->getTESActor());
+                if (handle && handle != vm->handlePolicy.EmptyHandle()) {
+                    RE::BSFixedString eventStr = "KNONKDOWN";
+                    if (event == HitResult::KNONKOUT) {
+                        eventStr = "KNONKOUT";
+                    } else if (event == HitResult::STANDING_STRUGGLE) {
+                        eventStr = "STANDING_STRUGGLE";
+                    }
+
+                    auto eventArgs =
+                        RE::MakeFunctionArguments((RE::TESObjectREFR*)aggressor->getTESActor(), std::move(eventStr));
+
+                    vm->SendAndRelayEvent(
+                        handle,
+                        _defeatManager->getConfig()->Config.PapyrusFunctionNames.OnSLDefeatPlayerKnockDownEventName,
+                        eventArgs, nullptr);
+                }
+            }
+        }
+
         DefeatConfig* getConfig();
         DefeatForms getForms() const;
         DefeatManager::SoftDependencyType getSoftDependency() const;
@@ -250,12 +278,12 @@ namespace SexLabDefeat {
             auto a2 = target->getTESActor()->GetPosition();
             return a1.GetDistance(a2);
         }
-        static inline float getHeadingAngleBetween(DefeatActor& source, DefeatActor& target) {
-            auto a1 = (&target)->getTESActor()->GetPosition();
-            return (&source)->getTESActor()->GetHeadingAngle(a1, false);
+        static inline float getHeadingAngleBetween(DefeatActorType source, DefeatActorType target) {
+            auto a1 = target->getTESActor()->GetPosition();
+            return source->getTESActor()->GetHeadingAngle(a1, false);
         }
-        static inline float getActorValuePercentage(DefeatActor& source, RE::ActorValue av) {
-            auto actor = (&source)->getTESActor();
+        static inline float getActorValuePercentage(DefeatActorType source, RE::ActorValue av) {
+            auto actor = source->getTESActor();
             auto actorAV = actor->AsActorValueOwner();
 
             auto temporary = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, av);
@@ -264,8 +292,8 @@ namespace SexLabDefeat {
 
             return total > 0 ? current / (total + temporary) : 1.0;
         }
-        static inline RE::TESForm* getEquippedHitSourceByFormID(DefeatActor& source, RE::FormID hitSource) {
-            auto actor = (&source)->getTESActor();
+        static inline RE::TESForm* getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource) {
+            auto actor = source->getTESActor();
             RE::TESForm* form = nullptr;
             auto equipped_right = actor->GetEquippedObject(false);
             if (equipped_right != nullptr && equipped_right->GetFormID() == hitSource) {
@@ -319,8 +347,9 @@ namespace SexLabDefeat {
             return (&source)->getTESActor()->IsInKillMove();
         }
         static inline bool isQuestEnabled(RE::TESQuest* quest) {
-            return quest != nullptr && quest->IsEnabled();
+            return quest != nullptr && quest->IsEnabled(); 
         }
+        inline bool isInCombat(DefeatActorType source) { return source->getTESActor()->IsInCombat(); }
 
     protected:
         std::map<RE::FormID, DefeatActorImplType> _actorMap;

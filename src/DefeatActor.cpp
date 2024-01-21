@@ -20,11 +20,11 @@ namespace SexLabDefeat {
 
     DefeatPlayerActorImpl::DefeatPlayerActorImpl(RE::FormID formID, DefeatActorManager* defeatActorManager)
         : DefeatActorImpl(formID, defeatActorManager) {
-        if (defeatActorManager->getSoftDependency().LRGPatch) {
+        //if (defeatActorManager->getSoftDependency().LRGPatch) {
             LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
                 [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
                 PapyrusInterface::ObjectVariableConfig(true, false)));
-        }
+        //}
     }
 
     PapyrusInterface::ObjectPtr DefeatPlayerActorImpl::getLRGDefeatPlayerVulnerabilityScript() {

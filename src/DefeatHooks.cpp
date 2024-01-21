@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatHooks.h"
 
 namespace EventSync {
 

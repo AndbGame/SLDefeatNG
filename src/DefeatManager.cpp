@@ -1,5 +1,4 @@
-#include "Defeat.h"
-
+#include "DefeatManager.h"
 
 namespace {
 

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "Defeat.h"
+#include <DefeatActor.h>
+#include <DefeatWidget.h>
+#include <DefeatCombatManager.h>
 
 namespace SexLabDefeat {
 
@@ -34,22 +36,22 @@ namespace SexLabDefeat {
 
         DefeatForms Forms;
 
-        void setWidget(SexLabDefeat::DefeatWidget* widget);
-        SexLabDefeat::DefeatWidget* getWidget();
+        void setWidget(DefeatWidget* widget);
+        DefeatWidget* getWidget();
         void setActorState(RE::Actor* target_actor, DefeatActor::States state);
 
-        SexLabDefeat::DefeatCombatManager* getCombatManager() { return _defeatCombatManager; };
-        SexLabDefeat::DefeatActorManager* getActorManager() { return _defeatActorManager; };
-        SexLabDefeat::DefeatConfig* getConfig() { return _defeatConfig; };
+        DefeatCombatManager* getCombatManager() { return _defeatCombatManager; };
+        DefeatActorManager* getActorManager() { return _defeatActorManager; };
+        DefeatConfig* getConfig() { return _defeatConfig; };
 
     protected:
         void initializeDependency();
         void initializeForms();
 
         std::atomic<GameState> _gameState;
-        SexLabDefeat::DefeatConfig* _defeatConfig;
-        SexLabDefeat::DefeatCombatManager* _defeatCombatManager;
-        SexLabDefeat::DefeatActorManager* _defeatActorManager;
-        SexLabDefeat::DefeatWidget* _defeatWidget = nullptr;
+        DefeatConfig* _defeatConfig;
+        DefeatCombatManager* _defeatCombatManager;
+        DefeatActorManager* _defeatActorManager;
+        DefeatWidget* _defeatWidget = nullptr;
     };
 }

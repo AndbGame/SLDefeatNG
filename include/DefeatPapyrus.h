@@ -114,6 +114,18 @@ namespace SexLabDefeat {
             ScriptObjectCallbackReceiver _scriptObjectClb;
             RE::BSFixedString _varName;
         };
+        
+        using StringSetVar = ObjectVariable<std::set<std::string_view>>;
+        using StringSetVarPtr = std::unique_ptr<StringSetVar>;
+
+        using StringVar = ObjectVariable<std::string_view>;
+        using StringVarPtr = std::unique_ptr<StringVar>;
+
+        using BoolVar = ObjectVariable<bool>;
+        using BoolVarPtr = std::unique_ptr<BoolVar>;
+
+        using FloatVar = ObjectVariable<float>;
+        using FloatVarPtr = std::unique_ptr<FloatVar>;
 
         struct EmptyRequestCallback : public RE::BSScript::IStackCallbackFunctor {
         public:
