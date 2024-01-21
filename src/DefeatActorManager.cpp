@@ -12,6 +12,7 @@ namespace SexLabDefeat {
         } else {
             defeatActor = val->second;
         }
+        defeatActor->setActor(actor);
         spinUnlock();
         return defeatActor;
     }
@@ -81,6 +82,8 @@ namespace SexLabDefeat {
         spinUnlock();
         return _actor;
     }
+
+    void DefeatActor::setActor(RE::Actor* actor) { _actor = actor; }
 
     bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
 

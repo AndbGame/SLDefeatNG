@@ -7,7 +7,7 @@ Experimental 1
 Experimental 2
 
 - State of Actors (ACTIVE, DISACTIVE) - Hit processed only in ACTIVE state. After Knockdown state changed to DISACTIVE. On Papyrus side state will be changed to ACTIVE again after events finished
-- Actor Extra Info requested when Combat state of ANY actors changed to kCombat (instead first hit) - as result Hit processing of first Hit from actor can be started early (instantly, if the time between the change of Combat state and onHit >= ~200ms)
+- Actor Extra Info requested when Combat state of ANY actors changed to kCombat (instead first hit) - as result Hit processing of first Hit from actor can be started early (instantly, if the time between the change of Combat state and onHit < ~200ms)
 - In addition to projectileSpamGuard, I also added HitSpamGuard. And configuration in `SexLabDefeat.ini` - `CombatManager.HitSpamGuardMs` (1000 = 1sec) - how often Hit can taken into account from the same source and actor. (500ms by default). Only for projectile and magic hits.
 - refactoring/implementation (lot of changes). public repo: https://github.com/AndbGame/SLDefeatNG
 - compatibility with dfwDeviousFramework (Vulnerability on Hit) still not implemented (todo)
@@ -17,4 +17,4 @@ Experimental 2
 
 Experimental 3
 
-- compatibility with dfwDeviousFramework finished
+- compatibility with dfwDeviousFramework finished (LRG Patch)

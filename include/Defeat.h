@@ -287,6 +287,7 @@ namespace SexLabDefeat {
 
         RE::FormID getActorFormId() const { return _actorFormId; };
         RE::Actor* getActor();
+        void setActor(RE::Actor* actor);
 
         bool isSame(RE::Actor* actor) const;
         virtual bool isPlayer() { return false; };
