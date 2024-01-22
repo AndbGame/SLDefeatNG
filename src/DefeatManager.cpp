@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatManager.h"
 
 
 namespace {
@@ -176,22 +176,6 @@ namespace SexLabDefeat {
 #undef LOAD_FORM
     }
 
-    HitEventType DefeatManager::createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
-                                               RawHitEvent rawHitEvent) {
-        HitEventType event = {};
-
-        event.target = _defeatActorManager->getActor(target_actor);
-        event.aggressor = _defeatActorManager->getActor(aggr_actor);
-        event.source = rawHitEvent.source;
-        event.projectile = rawHitEvent.projectile;
-        event.isPowerAttack = rawHitEvent.isPowerAttack;
-        event.isSneakAttack = rawHitEvent.isSneakAttack;
-        event.isBashAttack = rawHitEvent.isBashAttack;
-        event.isHitBlocked = rawHitEvent.isHitBlocked;
-
-        return event;
-    }
-
     void DefeatManager::setWidget(DefeatWidget* widget) {
         if (_defeatWidget != nullptr) {
             _defeatWidget->spinLock();
@@ -204,10 +188,8 @@ namespace SexLabDefeat {
         if (_defeatWidget == nullptr) {
             return nullptr;
         }
-        _defeatWidget->spinLock();
-        auto widget = _defeatWidget;
-        _defeatWidget->spinUnlock();
-        return widget;
+        UniqueSpinLock lock(*_defeatWidget);
+        return _defeatWidget;
     }
 
     void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActor::States state) {
@@ -227,24 +209,9 @@ namespace SexLabDefeat {
         }
     }
 
-    bool DefeatManager::randomChanse(float chanse, float min, float max) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> distr(min, max);
-
-        return distr(gen) < chanse;
-    }
-
     DefeatManager::GameState DefeatManager::getGameState() { return _gameState.load(); }
     void DefeatManager::setGameState(DefeatManager::GameState state) { _gameState.store(state); }
 
-    void DefeatManager::ActorEnterdToCombatState(RE::Actor* target_actor) {
-        auto defActor = _defeatActorManager->getActor(target_actor);
-        defActor.get()->extraData->getCallback([this, defActor] {
-            SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
-                            defActor->getActor()->GetName());
-        });
-    }
     PapyrusInterface::ObjectPtr DefeatManager::getDefeatQTEWidgetScript() const {
         if (Forms.DefeatPlayerQTE == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
@@ -259,4 +226,16 @@ namespace SexLabDefeat {
         }
         return nullptr;
     }
+
+    void DefeatManager::requestActorExtraData(DefeatActorType target) {
+        SexLabDefeat::Papyrus::CallbackPtr callback(
+            new SexLabDefeat::PapyrusInterface::EmptyRequestCallback("requestActorExtraData"));
+
+        SKSE::log::trace("DeferredActorExtraDataInitializer - <{:08X}>", target->getActorFormId());
+
+        if (!SexLabDefeat::Papyrus::DispatchStaticCall("defeat_skse_api", "requestActorExtraData", callback,
+                                                       target->getActor())) {
+            SKSE::log::error("Failed to dispatch static call [defeat_skse_api::requestActorExtraData].");
+        }
+    };
 }

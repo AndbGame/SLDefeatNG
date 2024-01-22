@@ -1,58 +1,6 @@
-#include "Defeat.h"
+#include "DefeatActor.h"
 
 namespace SexLabDefeat {
-
-    DefeatActorType DefeatActorManager::getActor(RE::Actor* actor) {
-        spinLock();
-        auto val = _actorMap.find(actor->GetFormID());
-        DefeatActorType defeatActor;
-        if (val == _actorMap.end()) {
-            defeatActor = std::make_shared<DefeatActor>(actor, _defeatManager);
-            _actorMap.emplace(actor->GetFormID(), defeatActor);
-        } else {
-            defeatActor = val->second;
-        }
-        defeatActor->setActor(actor);
-        spinUnlock();
-        return defeatActor;
-    }
-
-    void DefeatActorManager::reset() {
-        spinLock();
-        _actorMap.clear();
-
-        auto actor = RE::PlayerCharacter::GetSingleton();
-        DefeatActorType defeatActor = std::make_shared<DefetPlayerActor>(actor, _defeatManager);
-        _actorMap.emplace(actor->GetFormID(), defeatActor);
-        _player = defeatActor;
-
-        spinUnlock();
-    }
-
-    bool DefeatActorManager::validForAggressorRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
-            return false;
-        }
-        return true;
-    }
-
-    bool DefeatActorManager::validForAggressorRoleOverPlayer(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
-            return false;
-        }
-        return true;
-    }
-
-    bool DefeatActorManager::validPlayerForVictimRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsOnMount() || actor->HasKeywordString("DefeatActive")) {
-            return false;
-        }
-        if (!actor->HasKeywordString("ActorTypeNPC")) {
-            return _defeatManager->getConfig()->Config.BeastImmunity->get();
-        }
-        return true;
-    }
-
     DefeatActor::DefeatActor(RE::Actor* actor, DefeatIManager* defeatManager) {
         _defeatManager = defeatManager;
         _actorFormId = actor->GetFormID();
@@ -374,7 +322,7 @@ namespace SexLabDefeat {
 
     bool DefeatActor::isDefeatAllowedByAgressor(DefeatActorType aggressor) {
         if (isPlayer()) {
-            //SKSE::log::trace("isDefeatAllowedByAgressor {}", aggressor->isDefeatAllowed2PC());
+            // SKSE::log::trace("isDefeatAllowedByAgressor {}", aggressor->isDefeatAllowed2PC());
             return aggressor->isDefeatAllowed2PC();
         }
         return aggressor->isDefeatAllowed2NvN();
@@ -467,16 +415,14 @@ namespace SexLabDefeat {
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && victimFemale) {  // Female on Female
-                        return mcmConfig->Config.GalOnGal->get() &&
-                               (aggressor->IsGay() || aggressor->IsBisexual());
+                        return mcmConfig->Config.GalOnGal->get() && (aggressor->IsGay() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && !victimFemale) {  // Female on Male
                         return mcmConfig->Config.GalOnMale->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (!aggressorFemale && !victimFemale) {  // Male on Male
-                        return mcmConfig->Config.MaleOnMale->get() &&
-                               (aggressor->IsGay() || aggressor->IsBisexual());
+                        return mcmConfig->Config.MaleOnMale->get() && (aggressor->IsGay() || aggressor->IsBisexual());
                     }
                 }
             } else {
@@ -532,7 +478,6 @@ namespace SexLabDefeat {
         }
     };
 
-    
     DefetPlayerActor::DefetPlayerActor(RE::Actor* actor, DefeatIManager* defeatManager)
         : DefeatActor(actor, defeatManager) {
         if (_defeatManager->SoftDependency.LRGPatch) {
@@ -549,7 +494,6 @@ namespace SexLabDefeat {
         float ret = 0;
         if (_defeatManager->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
             _defeatManager->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
-
             extraData->spinLock();
             ret = extraData->getValue().DFWVulnerability;
             extraData->spinUnlock();

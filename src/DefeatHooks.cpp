@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatHooks.h"
 
 namespace EventSync {
 
@@ -15,7 +15,7 @@ namespace EventSync {
                 if (target_actor != nullptr) {
                     SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state",
                                     target_actor->GetFormID(), target_actor->GetName());
-                    _defeatManager->ActorEnterdToCombatState(target_actor);
+                    _defeatManager->getCombatManager()->onActorEnteredToCombatState(target_actor);
                 }
             }
             return RE::BSEventNotifyControl::kContinue;
@@ -62,15 +62,15 @@ namespace EventSync {
 
     class OnTESEquipEventHandler : public RE::BSTEventSink<RE::TESEquipEvent> {
     public:
-        OnTESEquipEventHandler(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        OnTESEquipEventHandler(SexLabDefeat::DefeatIManager* defeatManager) { _defeatManager = defeatManager; };
         ~OnTESEquipEventHandler() = default;
-        SexLabDefeat::DefeatManager* _defeatManager;
+        SexLabDefeat::DefeatIManager* _defeatManager;
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {
 
-            SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
-                             a_event->equipped, a_event->baseObject);
+            //SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
+            //                 a_event->equipped, a_event->baseObject);
             return RE::BSEventNotifyControl::kContinue;
         }
     };

@@ -78,4 +78,23 @@ namespace SexLabDefeat {
         volatile long _lockCount;     // 4
     };
     static_assert(sizeof(SpinLock) == 0x8);
+
+    class UniqueSpinLock {
+    public:
+        UniqueSpinLock(SpinLock& a_lock) {
+            _lock = &a_lock;
+            // DEBUG("UniqueLock - {:016X} - {:016X}",(uintptr_t)this,(uintptr_t)_lock)
+            _lock->spinLock();
+        }
+        ~UniqueSpinLock() {
+            // DEBUG("~UniqueLock - {:016X} - {:016X}",(uintptr_t)this,(uintptr_t)_lock)
+            _lock->spinUnlock();
+        }
+        UniqueSpinLock() = delete;
+        UniqueSpinLock(UniqueSpinLock const&) = delete;
+        void operator=(UniqueSpinLock const& x) = delete;
+
+    private:
+        mutable SpinLock* _lock;
+    };
 }

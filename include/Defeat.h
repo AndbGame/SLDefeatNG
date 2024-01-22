@@ -3,53 +3,13 @@
 #include <DefeatSpinLock.h>
 #include <DefeatUtils.h>
 #include <DefeatPapyrus.h>
+#include <DefeatForms.h>
 
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
 namespace SexLabDefeat {
-
-    struct DefeatForms {
-        RE::TESQuest* DefeatRessourcesQst = nullptr;
-        RE::TESQuest* DefeatMCMQst = nullptr;
-        RE::TESQuest* DefeatPlayerQTE = nullptr;
-
-        RE::TESQuest* SexLabQuestFramework = nullptr;
-
-        RE::SpellItem* SatisfiedSPL = nullptr;
-
-        struct {
-            RE::TESQuest* PlayerQST = nullptr;
-            RE::TESQuest* PAQst = nullptr;
-            RE::TESQuest* PlayerActionQst = nullptr;
-            RE::TESQuest* NPCsQst = nullptr;
-            RE::TESQuest* NPCsRefreshQst = nullptr;
-            RE::TESQuest* Robber = nullptr;
-            RE::TESQuest* DGIntimidateQuest = nullptr;
-            RE::TESQuest* WerewolfQst = nullptr;
-        } MiscQuests;
-
-        struct {
-            RE::EffectSetting* ImmunityEFF = nullptr;
-            RE::EffectSetting* HKActionEFF = nullptr;
-            RE::EffectSetting* HKFollowerActionEFF = nullptr;
-            RE::EffectSetting* SexCrimeEFF = nullptr;
-            RE::EffectSetting* NVNAssaultEFF = nullptr;
-        } MiscMagicEffects;
-
-        struct {
-            RE::TESQuest* DefeatVulnerability = nullptr;
-        } LRGPatch;
-
-        struct {
-
-        } Keywords;
-
-        //RE::Actor* Player;
-
-        std::atomic<bool> isDirty = true;
-    };
     
     namespace PapyrusInterface {
         using StringSetVar = ObjectVariable<std::set<std::string_view>>;
@@ -65,7 +25,7 @@ namespace SexLabDefeat {
         using FloatVarPtr = std::unique_ptr<FloatVar>;
     }
 
-    class DefeatManager;
+    class DefeatIManager;
 
     class DefeatConfig {
     public:
@@ -161,7 +121,7 @@ namespace SexLabDefeat {
         } Config;
 
         void readIniConfig();
-        void Setup(SexLabDefeat::DefeatManager* defeatManager);
+        void Setup(SexLabDefeat::DefeatIManager* defeatManager);
         void Reset();
         void LoadScriptObjects();
 
@@ -177,7 +137,7 @@ namespace SexLabDefeat {
         boost::property_tree::ptree _iniConfig;
         std::map<std::string, std::variant<std::string, int, float, bool>> _config;
 
-        SexLabDefeat::DefeatManager* _defeatManager;
+        SexLabDefeat::DefeatIManager* _defeatManager;
 
         PapyrusInterface::ObjectPtr DefeatMCMScr;
         PapyrusInterface::ObjectPtr defeatconfig;
@@ -282,7 +242,7 @@ namespace SexLabDefeat {
     public:
         enum States { NONE, ACTIVE, DISACTIVE };
 
-        DefeatActor(RE::Actor* actor, DefeatManager* defeatManager);
+        DefeatActor(RE::Actor* actor, DefeatIManager* defeatManager);
         ~DefeatActor();
 
         RE::FormID getActorFormId() const { return _actorFormId; };
@@ -358,14 +318,14 @@ namespace SexLabDefeat {
 
         std::chrono::high_resolution_clock::time_point hitImmunityExpiration;
         std::chrono::high_resolution_clock::time_point _minTime;
-        DefeatManager* _defeatManager;
+        DefeatIManager* _defeatManager;
         float _dynamicDefeat = 0;
         SpinLock* _dynamicDefeatSpinLock = nullptr;
     };
 
     class DefetPlayerActor : public DefeatActor {
     public:
-        DefetPlayerActor(RE::Actor* actor, DefeatManager* defeatManager);
+        DefetPlayerActor(RE::Actor* actor, DefeatIManager* defeatManager);
         bool isPlayer() override { return true; };
         float getVulnerability() override;
 
@@ -377,7 +337,7 @@ namespace SexLabDefeat {
 
     class DefeatActorManager : public SpinLock {
     public:
-        DefeatActorManager(DefeatManager* defeatManager) /* : SpinLock()*/ {
+        DefeatActorManager(DefeatIManager* defeatManager) /* : SpinLock()*/ {
             _defeatManager = defeatManager;
         };
         ~DefeatActorManager() = default;
@@ -398,7 +358,7 @@ namespace SexLabDefeat {
         std::map<RE::FormID, DefeatActorType> _actorMap;
 
         DefeatActorType _player;
-        SexLabDefeat::DefeatManager* _defeatManager;
+        SexLabDefeat::DefeatIManager* _defeatManager;
     };
 
     struct RawHitEvent {
@@ -452,13 +412,15 @@ namespace SexLabDefeat {
 
         RE::BSFixedString* OnSLDefeatPlayerKnockDownEventName;
 
-        DefeatCombatManager(DefeatActorManager* defeatActorManager,
-                            DefeatManager* defeatManager);
+        DefeatCombatManager(DefeatActorManager* defeatActorManager, DefeatIManager* defeatManager);
         ~DefeatCombatManager();
 
-        DefeatManager* getDefeatManager() { return _defeatManager; };
+        DefeatIManager* getDefeatManager() { return _defeatManager; };
 
+        void onActorEnteredToCombatState(RE::Actor* target_actor);
         void onHitHandler(RawHitEvent event);
+        HitEventType createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
+                                            RawHitEvent rawHitEvent);
 
         void calculatePlayerHit(HitEventType event);
         HitResult KDWay(HitEventType event);
@@ -479,7 +441,7 @@ namespace SexLabDefeat {
 
     protected:
         SexLabDefeat::DefeatActorManager* _defeatActorManager;
-        SexLabDefeat::DefeatManager* _defeatManager;
+        SexLabDefeat::DefeatIManager* _defeatManager;
         //std::unordered_map<HitSpamKey, std::chrono::high_resolution_clock::time_point, ProjectileSpamHash, HitSpamEqual>
         //    projectileSpamGuard;
         std::unordered_map<HitSpamKey, std::chrono::high_resolution_clock::time_point, ProjectileSpamHash, HitSpamEqual>
@@ -490,7 +452,7 @@ namespace SexLabDefeat {
         void onPlayerHitHandler(RawHitEvent event, SexLabDefeat::DefeatActorType defActor);
     };
     
-    class DefeatManager {
+    class DefeatIManager abstract {
     public:
         enum GameState {
             NONE,
@@ -504,40 +466,16 @@ namespace SexLabDefeat {
             bool LRGPatch = false;
         } SoftDependency;
 
-        DefeatManager(SexLabDefeat::DefeatConfig* defeatConfig);
-
-        void load();
-        void reset();
-        void reInitializeWidget() const;
-        GameState getGameState();
-        void setGameState(GameState state);
-        void ActorEnterdToCombatState(RE::Actor* target_actor);
-        PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
-
-        bool randomChanse(float chanse, float min = 1, float max = 100);
-
         DefeatForms Forms;
 
-        HitEventType createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor, RawHitEvent rawHitEvent);
-        void setWidget(SexLabDefeat::DefeatWidget* widget);
-        SexLabDefeat::DefeatWidget* getWidget();
-        void setActorState(RE::Actor* target_actor, DefeatActor::States state);
+        virtual GameState getGameState() = 0;
+        virtual void setGameState(GameState state) = 0;
+                
+        virtual void requestActorExtraData(DefeatActorType target) = 0;
 
-        SexLabDefeat::DefeatCombatManager* getCombatManager() { return _defeatCombatManager; };
-        SexLabDefeat::DefeatActorManager* getActorManager() { return _defeatActorManager; };
-        SexLabDefeat::DefeatConfig* getConfig() { return _defeatConfig; };
-
-    protected:
-        void initializeDependency();
-        void initializeForms();
-
-        std::atomic<GameState> _gameState;
-        SexLabDefeat::DefeatConfig* _defeatConfig;
-        SexLabDefeat::DefeatCombatManager* _defeatCombatManager;
-        SexLabDefeat::DefeatActorManager* _defeatActorManager;
-        SexLabDefeat::DefeatWidget* _defeatWidget = nullptr;
+        virtual DefeatWidget* getWidget() = 0;
+        virtual DefeatCombatManager* getCombatManager() = 0;
+        virtual DefeatActorManager* getActorManager() = 0;
+        virtual DefeatConfig* getConfig() = 0;
     };
-
-    void installHooks(SexLabDefeat::DefeatManager* defeatManager);
-    void installEventSink(SexLabDefeat::DefeatManager* defeatManager);
 }

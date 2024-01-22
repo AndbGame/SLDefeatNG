@@ -1,5 +1,8 @@
-#include "Defeat.h"
+#include <Defeat.h>
+
 #include "BuildVersion.h"
+#include "src/DefeatManager.h"
+#include "src/DefeatHooks.h"
 
 namespace {
     SexLabDefeat::DefeatConfig* defeatConfig;
