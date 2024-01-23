@@ -1,32 +1,48 @@
 #include "DefeatActorManager.h"
+#include "Defeat.h"
 
 namespace SexLabDefeat {
 
-    DefeatActorType DefeatActorManager::getActor(RE::Actor* actor) {
-        spinLock();
-        auto val = _actorMap.find(actor->GetFormID());
-        DefeatActorType defeatActor;
-        if (val == _actorMap.end()) {
-            defeatActor = std::make_shared<DefeatActor>(actor, _defeatManager);
-            _actorMap.emplace(actor->GetFormID(), defeatActor);
-        } else {
-            defeatActor = val->second;
-        }
-        defeatActor->setActor(actor);
-        spinUnlock();
-        return defeatActor;
-    }
-
     void DefeatActorManager::reset() {
-        spinLock();
+        SexLabDefeat::UniqueSpinLock lock(*this);
         _actorMap.clear();
 
         auto actor = RE::PlayerCharacter::GetSingleton();
-        DefeatActorType defeatActor = std::make_shared<DefetPlayerActor>(actor, _defeatManager);
+        DefeatPlayerActorImplType defeatActor =
+            std::make_shared<DefeatPlayerActorImpl>(actor->GetFormID(), this);
         _actorMap.emplace(actor->GetFormID(), defeatActor);
         _player = defeatActor;
+    }
+    DefeatPlayerActorType DefeatActorManager::getPlayer(RE::Actor* actor) {
+        if (actor == nullptr) {
+            actor = RE::PlayerCharacter::GetSingleton();
+        }
+        auto defPlayerImpl = getPlayerImpl();
+        SexLabDefeat::UniqueSpinLock lock(*(defPlayerImpl.get()));
+        return std::make_shared<DefeatPlayerActor>(getActorData(defPlayerImpl), actor, defPlayerImpl);
+    }
 
-        spinUnlock();
+    DefeatActorImplType DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
+        assert(actor != nullptr);
+        auto formID = actor->GetFormID();
+
+        SexLabDefeat::UniqueSpinLock lock(*this);
+        auto val = _actorMap.find(formID);
+        DefeatActorImplType defeatActorImpl;
+        if (val == _actorMap.end()) {
+            defeatActorImpl = std::make_shared<DefeatActorImpl>(formID, this);
+            _actorMap.emplace(formID, defeatActorImpl);
+        } else {
+            defeatActorImpl = val->second;
+        }
+        return defeatActorImpl;
+    }
+
+    DefeatActorType DefeatActorManager::getDefeatActor(RE::Actor* actor) {
+        assert(actor != nullptr);
+        auto defPlayerImpl = getDefeatActorImpl(actor);
+        SexLabDefeat::UniqueSpinLock lock(*defPlayerImpl);
+        return std::make_shared<DefeatPlayerActor>(getActorData(defPlayerImpl), actor, defPlayerImpl);
     }
         
     bool IDefeatActorManager::isDefeatAllowedByAgressor(DefeatActorType target, DefeatActorType aggressor) {
@@ -173,6 +189,29 @@ namespace SexLabDefeat {
         }
     };
 
+    void DefeatActorManager::playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) {
+        auto vm = RE::SkyrimVM::GetSingleton();
+        if (vm) {
+            const auto handle = vm->handlePolicy.GetHandleForObject(static_cast<RE::VMTypeID>(RE::FormType::Reference),
+                                                                    getTesActor(target));
+            if (handle && handle != vm->handlePolicy.EmptyHandle()) {
+                RE::BSFixedString eventStr = "KNONKDOWN";
+                if (event == HitResult::KNONKOUT) {
+                    eventStr = "KNONKOUT";
+                } else if (event == HitResult::STANDING_STRUGGLE) {
+                    eventStr = "STANDING_STRUGGLE";
+                }
+
+                auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)getTesActor(aggressor), std::move(eventStr));
+
+                vm->SendAndRelayEvent(
+                    handle,
+                    &(_defeatManager->getConfig()->Config.PapyrusFunctionNames.OnSLDefeatPlayerKnockDownEventName),
+                    eventArgs, nullptr);
+            }
+        }
+    }
+
     bool IDefeatActorManager::validForAggressorRole(RE::Actor* actor) {
         if (actor == nullptr || actor->IsGhost()) {
             return false;
@@ -196,17 +235,24 @@ namespace SexLabDefeat {
         }
         return true;
     }
+
+    DefeatConfig* DefeatActorManager::getConfig() { return _defeatManager->getConfig(); }
+
+    DefeatForms DefeatActorManager::getForms() { return _defeatManager->Forms; }
+
+    SoftDependencyType DefeatActorManager::getSoftDependency() { return _defeatManager->SoftDependency; }
+
     float IDefeatActorManager::getDistanceBetween(DefeatActorType source, DefeatActorType target) {
-        auto a1 = source->getActor()->GetPosition();
-        auto a2 = target->getActor()->GetPosition();
+        auto a1 = source->getTESActor()->GetPosition();
+        auto a2 = target->getTESActor()->GetPosition();
         return a1.GetDistance(a2);
     }
     float IDefeatActorManager::getHeadingAngleBetween(DefeatActorType source, DefeatActorType target) {
-        auto a1 = target->getActor()->GetPosition();
-        return source->getActor()->GetHeadingAngle(a1, false);
+        auto a1 = target->getTESActor()->GetPosition();
+        return source->getTESActor()->GetHeadingAngle(a1, false);
     }
     float IDefeatActorManager::getActorValuePercentage(DefeatActorType source, RE::ActorValue av) {
-        auto actor = source->getActor();
+        auto actor = source->getTESActor();
         auto actorAV = actor->AsActorValueOwner();
 
         auto temporary = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, av);
@@ -216,7 +262,7 @@ namespace SexLabDefeat {
         return total > 0 ? current / (total + temporary) : 1.0;
     }
     RE::TESForm* IDefeatActorManager::getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource) {
-        auto actor = source->getActor();
+        auto actor = source->getTESActor();
         RE::TESForm* form = nullptr;
         auto equipped_right = actor->GetEquippedObject(false);
         if (equipped_right != nullptr && equipped_right->GetFormID() == hitSource) {
@@ -234,7 +280,7 @@ namespace SexLabDefeat {
     }
 
     bool IDefeatActorManager::wornHasAnyKeyword(DefeatActor& source, std::list<std::string> kwds) {
-        auto actor = source.getActor();
+        auto actor = source.getTESActor();
 
         bool ret = false;
 
@@ -259,21 +305,90 @@ namespace SexLabDefeat {
         return ret;
     }
     bool IDefeatActorManager::hasKeywordString(DefeatActorType source, std::string kwd) {
-        return source->getActor()->HasKeywordString(kwd);
+        return hasKeywordString(*source, kwd);
+    }
+    bool IDefeatActorManager::hasKeywordString(DefeatActor& source, std::string kwd) {
+        return source.getTESActor()->HasKeywordString(kwd);
     }
     bool IDefeatActorManager::notInFlyingState(DefeatActorType source) {
         return notInFlyingState(*source);
     }
     bool IDefeatActorManager::notInFlyingState(DefeatActor& source) {
-        return source.getActor()->AsActorState()->GetFlyState() == RE::FLY_STATE::kNone;
+        return source.getTESActor()->AsActorState()->GetFlyState() == RE::FLY_STATE::kNone;
     }
-    bool IDefeatActorManager::hasSpell(DefeatActorType source, RE::SpellItem* spell) {
-        return spell != nullptr && source->getActor()->HasSpell(spell);
+    bool IDefeatActorManager::hasSpell(DefeatActorType source, RE::SpellItem* spell) { return hasSpell(*source, spell); }
+    bool IDefeatActorManager::hasSpell(DefeatActor& source, RE::SpellItem* spell) {
+        return spell != nullptr && source.getTESActor()->HasSpell(spell);
     }
     bool IDefeatActorManager::hasMagicEffect(DefeatActorType source, RE::EffectSetting* effect) {
-        return effect != nullptr && source->getActor()->GetMagicTarget()->HasMagicEffect(effect);
+        return hasMagicEffect(*source, effect);
     }
-    bool IDefeatActorManager::isInKillMove(DefeatActorType source) { return source->getActor()->IsInKillMove(); }
+    bool IDefeatActorManager::hasMagicEffect(DefeatActor& source, RE::EffectSetting* effect) {
+        return effect != nullptr && source.getTESActor()->GetMagicTarget()->HasMagicEffect(effect);
+    }
+    bool IDefeatActorManager::isInKillMove(DefeatActorType source) { return isInKillMove(*source); }
+    bool IDefeatActorManager::isInKillMove(DefeatActor& source) { return source.getTESActor()->IsInKillMove(); }
     bool IDefeatActorManager::isQuestEnabled(RE::TESQuest* quest) { return quest != nullptr && quest->IsEnabled(); }
-    bool IDefeatActorManager::isInCombat(DefeatActorType source) { return source->getActor()->IsInCombat(); }
+    bool IDefeatActorManager::isInCombat(DefeatActorType source) { return source->getTESActor()->IsInCombat(); }
+
+    RE::Actor* IDefeatActorManager::getTesActor(DefeatActorType source) { return source->getTESActor(); }
+
+    DefeatActorDataType IDefeatActorManager::getActorData(DefeatActorImplType source) { return source->_data; }
+
+
+    
+    float DefeatPlayerActor::getVulnerability() {
+        if (!_impl->getActorManager()->getSoftDependency().LRGPatch) {
+            return 0;
+        }
+        float ret = 0;
+        if (_impl->getActorManager()->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
+            _impl->getActorManager()->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
+            ret = _data.DFWVulnerability;
+
+        } else {
+            ret = _impl->getVulnerability();
+        }
+        SKSE::log::trace("DefetPlayerActor::getVulnerability {}", static_cast<int>(ret));
+        return ret;
+    }
+
+    DefeatPlayerActorImpl::DefeatPlayerActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager)
+        : DefeatActorImpl(formID, defeatActorManager) {
+
+         if (defeatActorManager->getSoftDependency().LRGPatch) {
+            LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
+                [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
+                PapyrusInterface::ObjectVariableConfig(true, false)));
+         }
+    }
+
+    float DefeatPlayerActorImpl::getVulnerability() {
+         if (!getActorManager()->getSoftDependency().LRGPatch) {
+            return 0;
+         }
+         return LRGVulnerabilityVar->get();
+    }
+
+    PapyrusInterface::ObjectPtr DefeatPlayerActorImpl::getLRGDefeatPlayerVulnerabilityScript() {
+        if (!getActorManager()->getSoftDependency().LRGPatch ||
+            getActorManager()->getForms().LRGPatch.DefeatVulnerability == nullptr ||
+            getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases.size() == 0) {
+            return nullptr;
+        }
+        const auto alias1 = getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases[0];
+        if (alias1 == nullptr) {
+            return nullptr;
+        }
+        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias1);
+        if (refAlias == nullptr) {
+            return nullptr;
+        }
+        auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        auto policy = vm->GetObjectHandlePolicy();
+        auto handle = policy->GetHandleForObject(refAlias->GetVMTypeID(), refAlias);
+        PapyrusInterface::ObjectPtr object = nullptr;
+        vm->FindBoundObject(handle, "DefeatPlayer_Vulnerability", object);
+        return object;
+    }
 }

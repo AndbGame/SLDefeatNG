@@ -19,14 +19,14 @@ namespace SexLabDefeat {
         DefeatCombatManager* getCombatManager() override { return _defeatCombatManager; };
         DefeatActorManager* getActorManager() override { return _defeatActorManager; };
         DefeatConfig* getConfig() override { return _defeatConfig; };
-        void requestActorExtraData(DefeatActorType target) override;
+        //void requestActorExtraData(DefeatActorType target) override;
 
         void load();
         void reset();
         void reInitializeWidget();
         PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
         void setWidget(DefeatWidget* widget);
-        void setActorState(RE::Actor* target_actor, DefeatActor::States state);
+        void setActorState(RE::Actor* target_actor, DefeatActorStates state);
 
     protected:
         void initializeDependency();

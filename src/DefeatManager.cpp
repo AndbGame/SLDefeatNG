@@ -13,15 +13,16 @@ namespace {
         SKSE::log::trace("Papyrus call responseActorExtraData(<{:08X}:{}>, {}, {}, {}, {}, {}, {})", actor->GetFormID(), actor->GetName(), ignoreActorOnHit, sexLabGender, sexLabSexuality, sexLabAllowed,
                          sexLabRaceKey, DFWVulnerability);
 
-        auto defeatActor = _defeatManager->getActorManager()->getActor(actor);
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
         SexLabDefeat::ActorExtraData data;
+        data.formId = actor->GetFormID();
         data.ignoreActorOnHit = ignoreActorOnHit;
         data.sexLabGender = sexLabGender;
         data.sexLabSexuality = sexLabSexuality;
         data.sexLabAllowed = sexLabAllowed;
         data.sexLabRaceKey = sexLabRaceKey;
         data.DFWVulnerability = DFWVulnerability;
-        defeatActor.get()->extraData->initializeValue(data);
+        defeatActor->responseExtraData(data);
     }
 
     inline void setActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string state) {
@@ -31,11 +32,11 @@ namespace {
         SKSE::log::trace("Papyrus call setActorState(<{:08X}:{}>, {})", actor->GetFormID(), actor->GetName(), state);
 
         std::transform(state.begin(), state.end(), state.begin(), ::toupper);
-        SexLabDefeat::DefeatActor::States _state = SexLabDefeat::DefeatActor::States::NONE;
+        SexLabDefeat::DefeatActorStates _state = SexLabDefeat::DefeatActorStates::NONE;
         if (state.compare("ACTIVE") == 0) {
-            _state = SexLabDefeat::DefeatActor::States::ACTIVE;
+            _state = SexLabDefeat::DefeatActorStates::ACTIVE;
         } else if (state.compare("DISACTIVE") == 0) {
-            _state = SexLabDefeat::DefeatActor::States::DISACTIVE;
+            _state = SexLabDefeat::DefeatActorStates::DISACTIVE;
         }
         _defeatManager->setActorState(actor, _state);
     }
@@ -192,9 +193,9 @@ namespace SexLabDefeat {
         return _defeatWidget;
     }
 
-    void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActor::States state) {
-        auto defeatActor = getActorManager()->getActor(target_actor);
-        if (state != DefeatActor::States::NONE) {
+    void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActorStates state) {
+        auto defeatActor = getActorManager()->getDefeatActor(target_actor);
+        if (state != DefeatActorStates::NONE) {
             defeatActor->setState(state);
             defeatActor->resetDynamicDefeat();
             if (defeatActor->isPlayer()) {
@@ -226,7 +227,7 @@ namespace SexLabDefeat {
         }
         return nullptr;
     }
-
+    /*
     void DefeatManager::requestActorExtraData(DefeatActorType target) {
         SexLabDefeat::Papyrus::CallbackPtr callback(
             new SexLabDefeat::PapyrusInterface::EmptyRequestCallback("requestActorExtraData"));
@@ -237,5 +238,5 @@ namespace SexLabDefeat {
                                                        target->getActor())) {
             SKSE::log::error("Failed to dispatch static call [defeat_skse_api::requestActorExtraData].");
         }
-    };
+    };*/
 }

@@ -8,17 +8,17 @@
 namespace SexLabDefeat {
 
     
-    class DefeatActorImpl : public IDefeatActor /*, public SpinLock*/ {
+    class DefeatActorImpl : public IDefeatActorImpl {
         friend class DefeatActorManager;
 
     public:
-        std::atomic<bool> isSheduledDeplateDynamicDefeat = false;
 
-        DefeatActorImpl(RE::FormID formID, DefeatActorManager* defeatActorManager) {
+        DefeatActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager) {
             _data.TESFormId = formID;
             _defeatActorManager = defeatActorManager;
+            extradataQueue = new PapyrusInterface::ActorExtraDataCallQueue(10min, 1min);
         };
-        ~DefeatActorImpl() {}
+        ~DefeatActorImpl() { delete extradataQueue; }
         DefeatActorImpl(DefeatActorImpl const&) = delete;
         void operator=(DefeatActorImpl const& x) = delete;
 
@@ -28,7 +28,7 @@ namespace SexLabDefeat {
         };
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             UniqueSpinLock lock(*this);
-            //_data.lastHitAggressor = lastHitAggressor->getTESFormId();
+            _data.lastHitAggressor = lastHitAggressor->getTESFormId();
         }
 
         void incrementDynamicDefeat(float val) override {
@@ -52,7 +52,7 @@ namespace SexLabDefeat {
             _data.dynamicDefeat = 0;
         }
 
-        void setState(IDefeatActor::States state) override {
+        void setState(DefeatActorStates state) override {
             UniqueSpinLock lock(*this);
             _data.state = state;
         };
@@ -95,28 +95,47 @@ namespace SexLabDefeat {
             UniqueSpinLock lock(*this);
             _data.sexLabRaceKey = val;
         }
-        void setExternalPapyrusDataExpirationFor(std::chrono::milliseconds ms) override {
+        void setExtraDataExpirationFor(std::chrono::milliseconds ms) override {
             UniqueSpinLock lock(*this);
             _data.extraDataExpiration = clock::now() + ms;
         }
 
-        DefeatActorManager* getActorManager() { return _defeatActorManager; }
+        void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
+            extradataQueue->functionCall(TesActor, callback, timeoutMs);
+        }
+        void responseExtraData(ActorExtraData data) override {
+            UniqueSpinLock lock(*this);
+            _data.ignoreActorOnHit = data.ignoreActorOnHit;
+            _data.sexLabGender = data.sexLabGender;
+            _data.sexLabSexuality = data.sexLabSexuality;
+            _data.sexLabAllowed = data.sexLabAllowed;
+            _data.sexLabRaceKey = data.sexLabRaceKey;
+            _data.DFWVulnerability = data.DFWVulnerability;
+            _data.extraDataExpiration = clock::now() + 2min;
+            extradataQueue->functionResponse(data);
+        }
+        bool isSheduledDeplateDynamicDefeat() override { return false; }
+        bool sheduleDeplateDynamicDefeat() override { return false; }
+        void stopDeplateDynamicDefeat() override { }
+
+        IDefeatActorManager* getActorManager() override { return _defeatActorManager; }
 
     protected:
-        DefeatActorManager* _defeatActorManager;
+        IDefeatActorManager* _defeatActorManager;
+        PapyrusInterface::ActorExtraDataCallQueue* extradataQueue;
     };
 
     class DefeatPlayerActorImpl : public DefeatActorImpl {
     public:
         PapyrusInterface::FloatVarPtr LRGVulnerabilityVar;
 
-        DefeatPlayerActorImpl(RE::FormID formID, DefeatActorManager* defeatActorManager);
+        DefeatPlayerActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager);
         bool isPlayer() override { return true; };
-        bool isSheduledDeplateDynamicDefeat() {
+        bool isSheduledDeplateDynamicDefeat() override {
             UniqueSpinLock lock(*this);
             return _isSheduledDeplateDynamicDefeat;
         }
-        bool sheduleDeplateDynamicDefeat() {
+        bool sheduleDeplateDynamicDefeat() override {
             UniqueSpinLock lock(*this);
             if (_isSheduledDeplateDynamicDefeat) {
                 return false;
@@ -124,10 +143,11 @@ namespace SexLabDefeat {
             _isSheduledDeplateDynamicDefeat = true;
             return true;
         }
-        void stopDeplateDynamicDefeat() {
+        void stopDeplateDynamicDefeat() override {
             UniqueSpinLock lock(*this);
             _isSheduledDeplateDynamicDefeat = false;
         }
+        float getVulnerability() override;
 
     protected:
         PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript();
@@ -136,25 +156,33 @@ namespace SexLabDefeat {
 
     class DefeatActorManager : public IDefeatActorManager {
     public:
-        DefeatActorManager(IDefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        DefeatActorManager(IDefeatManager* defeatManager) : _defeatManager(defeatManager) {};
         ~DefeatActorManager() = default;
         DefeatActorManager(DefeatActorManager const&) = delete;
         void operator=(DefeatActorManager const& x) = delete;
 
         void reset();
 
-        DefeatActorType getPlayer() override { return _player; }
+        DefeatPlayerActorImplType getPlayerImpl() override { return _player; }
+        DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr);
 
-        DefeatActorType getActor(RE::Actor* actor) override;
+        DefeatActorImplType getDefeatActorImpl(RE::Actor* actor) override;
+        DefeatActorType getDefeatActor(RE::Actor* actor) override;
 
         bool validPlayerForVictimRole(RE::Actor* actor) override;
         bool hasSexInterestByAggressor(DefeatActorType target, DefeatActorType aggressor) override;
         bool hasSexCombinationWithAggressor(DefeatActorType target, DefeatActorType aggressor) override;
         bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) override;
 
+        void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) override;
+
+        DefeatConfig* getConfig() override;
+        DefeatForms getForms() override;
+        SoftDependencyType getSoftDependency() override;
+
     protected:
-        std::map<RE::FormID, DefeatActorType> _actorMap;
-        DefeatActorType _player;
+        std::map<RE::FormID, DefeatActorImplType> _actorMap;
+        DefeatPlayerActorImplType _player;
 
         IDefeatManager* _defeatManager;
     };

@@ -8,75 +8,64 @@ namespace SexLabDefeat {
         _defeatManager = defeatManager;
         _hitGuardExpiration = std::chrono::milliseconds(_defeatManager->getConfig()->HIT_SPAM_GUARD_EXPIRATION_MS);
         hitSpamGuardSpinLock = new SpinLock();
-        OnSLDefeatPlayerKnockDownEventName = new RE::BSFixedString("OnSLDefeatPlayerKnockDown");
     }
 
     DefeatCombatManager::~DefeatCombatManager() {
         hitSpamGuardSpinLock->spinLock();
         delete hitSpamGuardSpinLock;
-        delete OnSLDefeatPlayerKnockDownEventName;
     }
 
     void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* target_actor) {
-        auto defActor = _defeatActorManager->getActor(target_actor);
-        defActor.get()->extraData->getCallback([this, defActor] {
-            //SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
-            //                defActor->getActor()->GetName());
-        });
+        auto defActor = _defeatActorManager->getDefeatActor(target_actor);
+        defActor->requestExtraData(target_actor, [&] {}, 10s);
     }
 
     void DefeatCombatManager::onHitHandler(RawHitEvent event) {
         auto target_actor = event.target->As<RE::Actor>();
-        if (target_actor && _defeatActorManager->getPlayer() != nullptr &&
-            (_defeatActorManager->getPlayer()->isSame(target_actor))) {
-            onPlayerHitHandler(event, _defeatActorManager->getPlayer());
+        if (target_actor != nullptr) {
+            auto player = _defeatActorManager->getPlayer(target_actor);
+            if (player->isSame(target_actor)) {
+                onPlayerHitHandler(event, player);
+            }
         }
     }
 
-    void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatActorType defActor) {
+    void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType targetActor) {
         SKSE::log::trace("onPlayerHitHandler");
-        if (defActor.get()->hasHitImmunity()) {
+        if (targetActor->hasHitImmunity()) {
             SKSE::log::trace("onPlayerHitHandler Hit Immunity - skipped");
             return;
         }
-        if (event.aggressor != nullptr) {
-            auto aggr_actor = event.aggressor->As<RE::Actor>();
-            auto target_actor = event.target->As<RE::Actor>();
-            auto targetActor = _defeatActorManager->getActor(target_actor);
+        if (targetActor->getState() != DefeatActorStates::ACTIVE) {
+            return;
+        }
+        if (event.aggressor == nullptr) {
+            return;
+        }
 
-            if (targetActor->getState() != DefeatActor::States::ACTIVE) {
+        auto aggr_actor = event.aggressor->As<RE::Actor>();
+        auto target_actor = event.target->As<RE::Actor>();
+
+        if (aggr_actor && _defeatActorManager->validForAggressorRole(aggr_actor) &&
+            _defeatActorManager->validPlayerForVictimRole(target_actor)) {
+            if (registerAndCheckHitGuard(event.aggressor, event.source, event.projectile)) {
+                SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
+                                    event.aggressor->GetFormID(), event.aggressor->GetName());
                 return;
             }
 
-            if (aggr_actor && _defeatActorManager->validForAggressorRole(aggr_actor) &&
-                _defeatActorManager->validPlayerForVictimRole(target_actor)) {
-                if (registerAndCheckHitGuard(event.aggressor, event.source, event.projectile)) {
-                    SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
-                                     event.aggressor->GetFormID(), event.aggressor->GetName());
-                    return;
-                }
+            auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
+            targetActor->setLastHitAggressor(aggrActor);
+            auto hitEvent = createHitEvent(targetActor, aggrActor, event);
+            auto target_actor_handle = target_actor->GetHandle();
+            auto aggr_actor_handle = aggr_actor->GetHandle();
 
-                auto aggrActor = _defeatActorManager->getActor(aggr_actor);
-                defActor.get()->setLastHitAggressor(aggrActor);
-                auto hitEvent = createHitEvent(target_actor, aggr_actor, event);
-                auto target_actor_handle = target_actor->GetHandle();
-                auto aggr_actor_handle = aggr_actor->GetHandle();
+            targetActor->requestExtraData(
+                target_actor, [&] {}, 10s);
+            aggrActor->requestExtraData(
+                aggr_actor, [&] {}, 10s);
 
-                targetActor.get()->extraData->getCallback([this, hitEvent, target_actor_handle, aggr_actor_handle] {
-                    if (aggr_actor_handle.get().get() != nullptr) {
-                        hitEvent.aggressor->extraData->getCallback(
-                            [this, hitEvent, target_actor_handle, aggr_actor_handle] {
-                                if (target_actor_handle.get().get() != nullptr &&
-                                    aggr_actor_handle.get().get() != nullptr) {
-
-                                    hitEvent.target->setActor(target_actor_handle.get().get());
-                                    hitEvent.aggressor->setActor(aggr_actor_handle.get().get());
-                                    this->calculatePlayerHit(hitEvent);
-                                }
-                            });
-                    };
-                });
-            }
+            this->calculatePlayerHit(hitEvent);
         }
     }
 
@@ -117,8 +106,8 @@ namespace SexLabDefeat {
         return false;
     }
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
-        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getActorFormId(),
-                         event.aggressor->getActorFormId());
+        SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),
+                         event.aggressor->getTESFormId());
         if (event.target == nullptr || event.aggressor == nullptr) {
             return;
         }
@@ -135,26 +124,9 @@ namespace SexLabDefeat {
                         }
                     }
                 }
-                event.target->setState(DefeatActor::States::DISACTIVE);
+                event.target->setState(DefeatActorStates::DISACTIVE);
 
-                auto vm = RE::SkyrimVM::GetSingleton();
-                if (vm) {
-                    const auto handle = vm->handlePolicy.GetHandleForObject(
-                        static_cast<RE::VMTypeID>(RE::FormType::Reference), event.target->getActor());
-                    if (handle && handle != vm->handlePolicy.EmptyHandle()) {
-                        RE::BSFixedString eventStr = "KNONKDOWN";
-                        if (result == HitResult::KNONKOUT) {
-                            eventStr = "KNONKOUT";
-                        } else if (result == HitResult::STANDING_STRUGGLE) {
-                            eventStr = "STANDING_STRUGGLE";
-                        }
-
-                        auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)event.aggressor->getActor(),
-                                                                   std::move(eventStr));
-
-                        vm->SendAndRelayEvent(handle, OnSLDefeatPlayerKnockDownEventName, eventArgs, nullptr);
-                    }
-                }
+                _defeatActorManager->playerKnockDownEvent(event.target, event.aggressor, result);
             } else {
                 // SKSE::log::trace("calculatePlayerHit: SKIP");
             }
@@ -351,11 +323,10 @@ namespace SexLabDefeat {
     }
 
     void DefeatCombatManager::shedulePlayerDeplateDynamicDefeat() {
-        auto player = this->getDefeatManager()->getActorManager()->getPlayer();
-        if (player->isSheduledDeplateDynamicDefeat) {
+        auto player = this->getDefeatManager()->getActorManager()->getPlayerImpl();
+        if (!player->sheduleDeplateDynamicDefeat()) {
             return;
         }
-        player->isSheduledDeplateDynamicDefeat = true;
 
         std::thread worker([this] {
             SKSE::log::trace("deplateDynamicDefeat thread started");
@@ -373,20 +344,17 @@ namespace SexLabDefeat {
                     re_ui != nullptr && !re_ui->GameIsPaused() && !this->_playerDeplateDynamicDefeatStopThread) {
                     auto totalDynamicDefeat = player->getDynamicDefeat();
                     if (totalDynamicDefeat > 0) {
-                        auto actor = player->getActor();
-                        if (actor != nullptr) {
-                            auto mcmConfig = _defeatManager->getConfig();
-                            if (actor->IsInCombat()) {
-                                player->decrementDynamicDefeat(
-                                    mcmConfig->Config.LRGPatch.DynamicDefeatDepleteOverTime->get() /
-                                                               100);
-                            } else {
-                                player->decrementDynamicDefeat(
-                                    mcmConfig->Config.LRGPatch.DynamicDefeatDepleteOverTime->get() /
-                                                               (100.0 / 5));
-                            }
-                            totalDynamicDefeat = _defeatManager->getActorManager()->getPlayer()->getDynamicDefeat();
+                        auto mcmConfig = _defeatManager->getConfig();
+                        if (_defeatActorManager->isInCombat(player)) {
+                            player->decrementDynamicDefeat(
+                                mcmConfig->Config.LRGPatch.DynamicDefeatDepleteOverTime->get() /
+                                                            100);
+                        } else {
+                            player->decrementDynamicDefeat(
+                                mcmConfig->Config.LRGPatch.DynamicDefeatDepleteOverTime->get() /
+                                                            (100.0 / 5));
                         }
+                        totalDynamicDefeat = _defeatManager->getActorManager()->getPlayer()->getDynamicDefeat();
                     }
 
                     SKSE::GetTaskInterface()->AddUITask([this] {
@@ -418,7 +386,7 @@ namespace SexLabDefeat {
                     }
                 }
                 if (this->_playerDeplateDynamicDefeatStopThread) {
-                    player->isSheduledDeplateDynamicDefeat = false;
+                    player->stopDeplateDynamicDefeat();
                 }
             }
             SKSE::log::trace("deplateDynamicDefeat thread stopped");
@@ -578,12 +546,12 @@ namespace SexLabDefeat {
         return true;
     };
 
-    HitEventType DefeatCombatManager::createHitEvent(RE::Actor* target_actor, RE::Actor* aggr_actor,
+    HitEventType DefeatCombatManager::createHitEvent(DefeatActorType target_actor, DefeatActorType aggr_actor,
                                                RawHitEvent rawHitEvent) {
         HitEventType event = {};
 
-        event.target = _defeatActorManager->getActor(target_actor);
-        event.aggressor = _defeatActorManager->getActor(aggr_actor);
+        event.target = target_actor;
+        event.aggressor = aggr_actor;
         event.source = rawHitEvent.source;
         event.projectile = rawHitEvent.projectile;
         event.isPowerAttack = rawHitEvent.isPowerAttack;
