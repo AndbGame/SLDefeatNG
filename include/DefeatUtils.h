@@ -4,7 +4,7 @@ namespace SexLabDefeat {
     
     using time_point = std::chrono::high_resolution_clock::time_point;
     using milliseconds = std::chrono::milliseconds;
-    using high_resolution_clock = std::chrono::high_resolution_clock;
+    using clock = std::chrono::high_resolution_clock;
 
     static const std::chrono::high_resolution_clock::time_point emptyTime =
         std::chrono::high_resolution_clock::time_point::min();

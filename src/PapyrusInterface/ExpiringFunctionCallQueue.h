@@ -11,7 +11,7 @@ namespace SexLabDefeat {
                 : _callback(callback), _expiration(expiration){};
 
             void execute() {
-                if (high_resolution_clock::now() <= _expiration) {
+                if (clock::now() <= _expiration) {
                     _callback();
                 }
             };

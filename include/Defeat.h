@@ -240,10 +240,103 @@ namespace SexLabDefeat {
     using HitProjectile = RE::FormID;
 
     class IDefeatActor : public SpinLock {
+    public:
+        enum States { NONE, ACTIVE, DISACTIVE, KNONKOUT, STANDING_STRUGGLE, KNONKDOWN };
+        enum class StateFlags : uint8_t {
+            NONE = 0,
+            KNOCK_ALLOWED = 1 << 0,
+            // flag2 = 1 << 1,
+            // flag3 = 1 << 2,
+            // flag3 = 1 << 3,
+            // flag3 = 1 << 4,
+            // flag3 = 1 << 5,
+            // flag3 = 1 << 6,
+            // flag3 = 1 << 7
+        };
+        struct DataType {
+            RE::FormID TESFormId = 0;
+            clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
+            RE::FormID lastHitAggressor = 0;
+            bool isSurrender = false;
+            States state = States::ACTIVE;
+            StateFlags flags = StateFlags::NONE;
+            float dynamicDefeat = 0;
+            float vulnerability = 0;
+
+            /* External Papyrus Data */
+            clock::time_point extraDataExpiration = SexLabDefeat::emptyTime;
+            float DFWVulnerability = 0;
+            bool ignoreActorOnHit = true;
+            int sexLabGender = -1;
+            int sexLabSexuality = -1;
+            bool sexLabAllowed = false;
+            std::string sexLabRaceKey = "";
+        };
+
+        RE::FormID getTESFormId() const { return _data.TESFormId; }
+
+        bool isSame(RE::Actor* actor) const {
+            assert(actor != nullptr);
+            return actor->GetFormID() == getTESFormId();
+        };
+
+        bool isSame(IDefeatActor* actor) const { return actor->getTESFormId() == getTESFormId(); };
+
+        virtual bool isPlayer() { return false; };
+        bool isSurrender() { return _data.isSurrender; }
+
+        bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
+        virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
+
+        RE::FormID getLastHitAggressorFormId() { return _data.lastHitAggressor; }
+        virtual void setLastHitAggressor(DefeatActorType lastHitAggressor) = 0;
+
+        States getState() { return _data.state; };
+        virtual void setState(States state) = 0;
+
+        float getDynamicDefeat() { return _data.dynamicDefeat; }
+        virtual void incrementDynamicDefeat(float val) = 0;
+        virtual void decrementDynamicDefeat(float val) = 0;
+        virtual void resetDynamicDefeat() = 0;
+
+        virtual float getVulnerability() { return _data.vulnerability; }
+        virtual void setVulnerability(float vulnerability) = 0;
+
+        bool isExternalPapyrusDataExpired() const { return clock::now() > _data.extraDataExpiration; }
+        virtual void setExternalPapyrusDataExpirationFor(std::chrono::milliseconds ms) = 0;
+
+        float getDFWVulnerability() { return _data.DFWVulnerability; }
+        virtual void setDFWVulnerability(float vulnerability) = 0;
+
+        bool isIgnoreActorOnHit() { return _data.ignoreActorOnHit; };
+        virtual void setIgnoreActorOnHit(bool val) = 0;
+
+        int getSexLabGender() { return _data.sexLabGender; };
+        virtual void setSexLabGender(int val) = 0;
+
+        int getSexLabSexuality() { return _data.sexLabSexuality; };
+        virtual void setSexLabSexuality(int val) = 0;
+
+        virtual bool isSexLabAllowed() { return _data.sexLabAllowed; }
+        virtual void setSexLabAllowed(bool val) = 0;
+
+        std::string getSexLabRaceKey() { return _data.sexLabRaceKey; }
+        virtual void setSexLabRaceKey(std::string val) = 0;
+
+        bool isFemale() { return getSexLabGender() == 1; }
+        bool IsStraight() { return getSexLabSexuality() >= 65; }
+        bool IsGay() { return getSexLabSexuality() <= 35; }
+        bool IsBisexual() {
+            auto ratio = getSexLabSexuality();
+            return (ratio < 65 && ratio > 35);
+        }
+
+    protected:
+        DataType _data;
 
     };
 
-    class DefeatActor : public IDefeatActor {
+    class DefeatActor : public SpinLock {
     public:
         enum States { NONE, ACTIVE, DISACTIVE };
 

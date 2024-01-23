@@ -4,6 +4,4 @@
 
 namespace SexLabDefeat {
 
-    class DefeatActorImpl : public IDefeatActor {
-    };
 }

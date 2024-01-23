@@ -15,7 +15,7 @@ namespace SexLabDefeat {
             SexLabDefeat::UniqueSpinLock locked(*this);
             if (isExpired()) {
                 std::shared_ptr<FunctionCallCallback> _callback =
-                    std::make_shared<FunctionCallCallback>(callback, high_resolution_clock::now() + timeoutMs);
+                    std::make_shared<FunctionCallCallback>(callback, clock::now() + timeoutMs);
                 if (_callbackQueue.size() > 100) {
                     SKSE::log::critical("Unexpected size of _callbackQueue: '{}'. Check papyrus log",
                                         _callbackQueue.size());
