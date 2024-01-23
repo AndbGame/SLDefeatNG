@@ -1,7 +1,6 @@
 #include "Defeat.h"
 
 namespace SexLabDefeat {
-    extern template class DeferredExpiringValue<ActorExtraData>;
 
     DefeatCombatManager::DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager) {
         _defeatActorManager = defeatActorManager;

@@ -201,46 +201,6 @@ namespace SexLabDefeat {
         float DFWVulnerability = 0;
     };
 
-    class DeferredExpiringValueCallback {
-    public:
-        DeferredExpiringValueCallback(std::function<void()> callback) { _callback = callback; };
-
-        void execute() {
-            _callback();
-        
-        };
-
-    protected:
-        std::function<void()> _callback;
-    };
-
-    template <class T>
-    class DeferredExpiringValue : public SpinLock {
-    public:
-        DeferredExpiringValue(std::unique_ptr<DeferredExpiringValueInitializer> initializer, int expirationMs = 0,
-                              int accessProlongationExpireMs = 0);
-        ~DeferredExpiringValue();
-
-        void getCallback(std::function<void()> callback);
-        bool isActualValue();
-        T getValue() { return _value; };
-        void initializeValue(T val);
-
-    protected:
-        void accessTouch();
-        void processCallbackStack();
-
-        T _value = {};
-        std::queue<std::shared_ptr<DeferredExpiringValueCallback>> _callbackQueue;
-        std::unique_ptr<DeferredExpiringValueInitializer> _initializer;
-
-        std::chrono::milliseconds _expiration;
-        std::chrono::milliseconds _accessProlongationExpireMs;
-        std::chrono::high_resolution_clock::time_point _expirationTime;
-        std::chrono::high_resolution_clock::time_point _minTime;
-
-    };
-
     class DefeatActor;
     class DefeatPlayerActor;
     class IDefeatActorImpl;

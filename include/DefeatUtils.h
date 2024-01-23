@@ -9,30 +9,6 @@ namespace SexLabDefeat {
     static const std::chrono::high_resolution_clock::time_point emptyTime =
         std::chrono::high_resolution_clock::time_point::min();
 
-    class DeferredExpiringValueInitializer : public SpinLock {
-    public:
-        enum StatusType { FREE, BUSY } Status = StatusType::FREE;
-
-        DeferredExpiringValueInitializer(std::function<void()> callback) { _callback = callback; };
-        ~DeferredExpiringValueInitializer() = default;
-
-        void initialize() {
-            spinLock();
-            Status = StatusType::BUSY;
-            spinUnlock();
-            _callback();
-        };
-
-        void setFree() {
-            spinLock();
-            Status = StatusType::FREE;
-            spinUnlock();
-        }
-
-    protected:
-        std::function<void()> _callback;
-    };
-
     static inline bool randomChanse(float chanse, float min = 1, float max = 100) {
         std::random_device rd;
         std::mt19937 gen(rd());

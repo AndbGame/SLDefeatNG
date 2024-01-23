@@ -56,7 +56,6 @@ namespace {
 }
 
 namespace SexLabDefeat {
-    extern template class DeferredExpiringValue<ActorExtraData>;
 
     DefeatManager::DefeatManager(DefeatConfig* defeatConfig) {
         setGameState(DefeatManager::GameState::NONE);

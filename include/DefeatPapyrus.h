@@ -128,33 +128,5 @@ namespace SexLabDefeat {
         private:
             std::string _info;
         };
-
-        class DeferredActorExtraDataInitializer : public DeferredExpiringValueInitializer {
-        public:
-
-            DeferredActorExtraDataInitializer(RE::Actor* actor)
-                : DeferredExpiringValueInitializer(createCallback(actor)) {
-            };
-
-            static std::function<void()> createCallback(RE::Actor* actor) {
-                SKSE::log::trace("DeferredActorExtraDataInitializer::createCallback - <{:08X}:{}>",
-                                 actor->GetFormID(), actor->GetName());
-                auto actor_handle = actor->GetHandle();
-                return [actor_handle] {
-                    if (auto actorPtr = actor_handle.get()) {
-                        auto actor = actorPtr.get();
-                        SexLabDefeat::Papyrus::CallbackPtr callback(
-                            new EmptyRequestCallback("DeferredActorExtraDataInitializer"));
-
-                        SKSE::log::trace("DeferredActorExtraDataInitializer - <{:08X}:{}>",
-                            actor->GetFormID(), actor->GetName());
-
-                        if (!SexLabDefeat::Papyrus::DispatchStaticCall("defeat_skse_api", "requestActorExtraData", callback, std::move(actor))) {
-                            SKSE::log::error("Failed to dispatch static call [defeat_skse_api::requestActorExtraData].");
-                        }
-                    }
-                };
-            };
-        };
     }
 }
