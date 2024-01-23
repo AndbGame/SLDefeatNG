@@ -62,9 +62,9 @@ namespace EventSync {
 
     class OnTESEquipEventHandler : public RE::BSTEventSink<RE::TESEquipEvent> {
     public:
-        OnTESEquipEventHandler(SexLabDefeat::DefeatIManager* defeatManager) { _defeatManager = defeatManager; };
+        OnTESEquipEventHandler(SexLabDefeat::IDefeatManager* defeatManager) { _defeatManager = defeatManager; };
         ~OnTESEquipEventHandler() = default;
-        SexLabDefeat::DefeatIManager* _defeatManager;
+        SexLabDefeat::IDefeatManager* _defeatManager;
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {

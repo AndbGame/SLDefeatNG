@@ -3,7 +3,7 @@
 namespace SexLabDefeat {
     extern template class DeferredExpiringValue<ActorExtraData>;
 
-    DefeatCombatManager::DefeatCombatManager(DefeatActorManager* defeatActorManager, DefeatIManager* defeatManager) {
+    DefeatCombatManager::DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager) {
         _defeatActorManager = defeatActorManager;
         _defeatManager = defeatManager;
         _hitGuardExpiration = std::chrono::milliseconds(_defeatManager->getConfig()->HIT_SPAM_GUARD_EXPIRATION_MS);
@@ -20,8 +20,8 @@ namespace SexLabDefeat {
     void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* target_actor) {
         auto defActor = _defeatActorManager->getActor(target_actor);
         defActor.get()->extraData->getCallback([this, defActor] {
-            SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
-                            defActor->getActor()->GetName());
+            //SKSE::log::info("Extra data received for <{:08X}:{}>", defActor->getActor()->GetFormID(),
+            //                defActor->getActor()->GetName());
         });
     }
 
@@ -59,10 +59,21 @@ namespace SexLabDefeat {
                 auto aggrActor = _defeatActorManager->getActor(aggr_actor);
                 defActor.get()->setLastHitAggressor(aggrActor);
                 auto hitEvent = createHitEvent(target_actor, aggr_actor, event);
-                targetActor.get()->extraData->getCallback([this, hitEvent] {
-                    if (hitEvent.aggressor != nullptr) {
+                auto target_actor_handle = target_actor->GetHandle();
+                auto aggr_actor_handle = aggr_actor->GetHandle();
+
+                targetActor.get()->extraData->getCallback([this, hitEvent, target_actor_handle, aggr_actor_handle] {
+                    if (aggr_actor_handle.get().get() != nullptr) {
                         hitEvent.aggressor->extraData->getCallback(
-                            [this, hitEvent] { this->calculatePlayerHit(hitEvent); });
+                            [this, hitEvent, target_actor_handle, aggr_actor_handle] {
+                                if (target_actor_handle.get().get() != nullptr &&
+                                    aggr_actor_handle.get().get() != nullptr) {
+
+                                    hitEvent.target->setActor(target_actor_handle.get().get());
+                                    hitEvent.aggressor->setActor(aggr_actor_handle.get().get());
+                                    this->calculatePlayerHit(hitEvent);
+                                }
+                            });
                     };
                 });
             }
@@ -111,7 +122,7 @@ namespace SexLabDefeat {
         if (event.target == nullptr || event.aggressor == nullptr) {
             return;
         }
-        if (event.target->CheckAggressor(event.aggressor)) {
+        if (_defeatActorManager->checkAggressor(event.target, event.aggressor)) {
             auto result = KDWay(event);
             if (result != HitResult::SKIP) {
                 SKSE::log::trace("calculatePlayerHit: {}", result);
@@ -157,7 +168,9 @@ namespace SexLabDefeat {
             SKSE::log::trace("KDWay - KD Not Allowed");
             return HitResult::SKIP;
         }
-        if (event.target->getDistanceTo(event.aggressor) > _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
+        if (_defeatActorManager->getDistanceBetween(event.target, event.aggressor) >
+            _defeatManager->getConfig()->KD_FAR_MAX_DISTANCE) {
+
             SKSE::log::trace("KDWay - Distance is too big");
             return HitResult::SKIP;
         }
@@ -204,7 +217,7 @@ namespace SexLabDefeat {
         if (event.isHitBlocked && mcmConfig->Config.KDHealthBlock->get()) {
             return HitResult::SKIP;
         }
-        const auto health = event.target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
+        const auto health = _defeatActorManager->getActorValuePercentage(event.target, RE::ActorValue::kHealth) * 100;
 
         if (randomChanse(mcmConfig->Config.ChanceOnHitPvic->get()) &&
             (health <= mcmConfig->Config.ThresholdPvic->get()) &&
@@ -231,10 +244,10 @@ namespace SexLabDefeat {
         if (event.isHitBlocked && mcmConfig->Config.KDStaminaBlock->get()) {
             return HitResult::SKIP;
         }
-        const auto stamina = event.target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
+        const auto stamina = _defeatActorManager->getActorValuePercentage(event.target, RE::ActorValue::kStamina) * 100;
 
         SKSE::log::trace("KDWayExhaustion - Heading angle {} ",
-                         static_cast<int>(event.target->getHeadingAngle(event.aggressor)));
+                         static_cast<int>(_defeatActorManager->getHeadingAngleBetween(event.target, event.aggressor)));
 
         if (KDOnlyBack(mcmConfig->Config.KDWayStaminaOB->get(), event)) {
             if (randomChanse(mcmConfig->Config.ChanceOnHitPvicS->get()) &&
@@ -276,7 +289,7 @@ namespace SexLabDefeat {
                     !event.target->isTied()) {
                     result = HitResult::KNONKOUT;
                 } else {
-                    auto form = event.aggressor->getEquippedSource(event.source);
+                    auto form = _defeatActorManager->getEquippedHitSourceByFormID(event.aggressor, event.source);
                     if (form != nullptr) {
                         auto formType = form->GetFormType();
                         if (formType == RE::FormType::Weapon || formType == RE::FormType::Spell) {
@@ -356,7 +369,7 @@ namespace SexLabDefeat {
                 if (re_ui == nullptr) {
                     SKSE::log::critical("deplateDynamicDefeat: RE::UI nullptr");
                 }
-                if (this->getDefeatManager()->getGameState() == SexLabDefeat::DefeatIManager::GameState::IN_GAME &&
+                if (this->getDefeatManager()->getGameState() == SexLabDefeat::IDefeatManager::GameState::IN_GAME &&
                     re_ui != nullptr && !re_ui->GameIsPaused() && !this->_playerDeplateDynamicDefeatStopThread) {
                     auto totalDynamicDefeat = player->getDynamicDefeat();
                     if (totalDynamicDefeat > 0) {
@@ -428,7 +441,7 @@ namespace SexLabDefeat {
         float DefeatBackHit = 0;
         float DefeatBlockReduction = 1.0;
 
-        auto form = event.aggressor->getEquippedSource(event.source);
+        auto form = _defeatActorManager->getEquippedHitSourceByFormID(event.aggressor, event.source);
         RE::FormType formType = RE::FormType::None;
         RE::TESObjectWEAP* weap = nullptr;
         if (form != nullptr) {
@@ -486,14 +499,16 @@ namespace SexLabDefeat {
         auto DynamicDefeatBlockReduction = mcmConfig->Config.LRGPatch.DynamicDefeatBlockReduction->get();
 
         if (DynamicDefeatLowStaminaMult > 1.0) {
-            const auto stamina = event.target->getActorValuePercentage(RE::ActorValue::kStamina) * 100;
+            const auto stamina =
+                _defeatActorManager->getActorValuePercentage(event.target, RE::ActorValue::kStamina) * 100;
             if (stamina <= mcmConfig->Config.LRGPatch.DynamicDefeatLowStaminaThreshold->get()) {
                 DefeatLowStaminaMult = DynamicDefeatLowStaminaMult - 1;
             }
         }
 
         if (DynamicDefeatLowHealthMult > 1.0) {
-            const auto health = event.target->getActorValuePercentage(RE::ActorValue::kHealth) * 100;
+            const auto health =
+                _defeatActorManager->getActorValuePercentage(event.target, RE::ActorValue::kHealth) * 100;
             if (health <= mcmConfig->Config.LRGPatch.DynamicDefeatLowHealthThreshold->get()) {
                 DefeatLowHeathMult = DynamicDefeatLowHealthMult - 1;
             }
@@ -529,7 +544,7 @@ namespace SexLabDefeat {
             return HitResult::SKIP;
         }
 
-        auto form = event.aggressor->getEquippedSource(event.source);
+        auto form = _defeatActorManager->getEquippedHitSourceByFormID(event.aggressor, event.source);
         if (form != nullptr && form->GetFormType() == RE::FormType::Weapon) {
             auto weap = static_cast<RE::TESObjectWEAP*>(form);
             auto stagger = weap->GetStagger() * 100;
@@ -555,7 +570,7 @@ namespace SexLabDefeat {
     }
     bool DefeatCombatManager::KDOnlyBack(bool opt, HitEventType event) {
         if (opt) {
-            auto angle = event.target->getHeadingAngle(event.aggressor);
+            auto angle = _defeatActorManager->getHeadingAngleBetween(event.target, event.aggressor);
             if (angle < 110.0 && angle > -110.0) {
                 return false;
             }

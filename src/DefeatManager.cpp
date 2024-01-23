@@ -91,13 +91,13 @@ namespace SexLabDefeat {
         SKSE::log::info("DefeatManager re-initialized");
     }
 
-    void DefeatManager::reInitializeWidget() const {
-        _defeatManager->setWidget(nullptr);
+    void DefeatManager::reInitializeWidget() {
+        setWidget(nullptr);
         if (Forms.DefeatPlayerQTE == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
         } else {
             auto DefeatQTEWidget =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+                SexLabDefeat::Papyrus::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
             if (DefeatQTEWidget == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
             } else {
@@ -108,7 +108,7 @@ namespace SexLabDefeat {
                 defeatWidget->widgetReady = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar(
                     [this] { return this->getDefeatQTEWidgetScript(); }, "_ready"sv,
                                                   PapyrusInterface::ObjectVariableConfig(false, false)));
-                _defeatManager->setWidget(defeatWidget);
+                setWidget(defeatWidget);
             }
         }
     }
@@ -217,7 +217,7 @@ namespace SexLabDefeat {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
         } else {
             auto DefeatQTEWidget =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+                SexLabDefeat::Papyrus::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
             if (DefeatQTEWidget == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
             } else {

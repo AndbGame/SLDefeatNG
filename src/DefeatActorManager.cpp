@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatActorManager.h"
 
 namespace SexLabDefeat {
 
@@ -28,399 +28,42 @@ namespace SexLabDefeat {
 
         spinUnlock();
     }
-
-    bool DefeatActorManager::validForAggressorRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
-            return false;
-        }
-        return true;
-    }
-
-    bool DefeatActorManager::validForAggressorRoleOverPlayer(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
-            return false;
-        }
-        return true;
-    }
-
-    bool DefeatActorManager::validPlayerForVictimRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsOnMount() || actor->HasKeywordString("DefeatActive")) {
-            return false;
-        }
-        if (!actor->HasKeywordString("ActorTypeNPC")) {
-            return _defeatManager->getConfig()->Config.BeastImmunity->get();
-        }
-        return true;
-    }
-
-    DefeatActor::DefeatActor(RE::Actor* actor, DefeatIManager* defeatManager) {
-        _defeatManager = defeatManager;
-        _actorFormId = actor->GetFormID();
-        _actor = actor;
-        _minTime = std::chrono::high_resolution_clock::time_point::min();
-        hitImmunityExpiration = _minTime;
-        extraData = new DeferredExpiringValue<ActorExtraData>(
-            std::make_unique<PapyrusInterface::DeferredActorExtraDataInitializer>(actor), 5 * 60 * 1000, 60 * 1000);
-    }
-
-    DefeatActor::~DefeatActor() {
-        extraData->spinLock();
-        delete extraData;
-
-        if (_dynamicDefeatSpinLock != nullptr) {
-            delete _dynamicDefeatSpinLock;
-        }
-    }
-
-    RE::Actor* DefeatActor::getActor() {
-        spinLock();
-        if (_actor == nullptr) {
-            SKSE::log::critical("getActor() - actor in nullptr, try fetch");
-            auto actor = RE::TESForm::LookupByID<RE::Actor>(getActorFormId());
-            _actor = actor;
-        }
-        spinUnlock();
-        return _actor;
-    }
-
-    void DefeatActor::setActor(RE::Actor* actor) { _actor = actor; }
-
-    bool DefeatActor::isSame(RE::Actor* actor) const { return actor->GetFormID() == getActorFormId(); }
-
-    float DefeatActor::getDistanceTo(DefeatActorType target) {
-        auto a1 = getActor()->GetPosition();
-        auto a2 = target->getActor()->GetPosition();
-        return a1.GetDistance(a2);
-    }
-
-    float DefeatActor::getHeadingAngle(DefeatActorType target) {
-        auto a1 = getActor()->GetPosition();
-        return getActor()->GetHeadingAngle(target->getActor()->GetPosition(), false);
-    }
-
-    float DefeatActor::getActorValuePercentage(RE::ActorValue av) {
-        auto actor = getActor();
-        auto actorAV = actor->AsActorValueOwner();
-
-        auto temporary = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, av);
-        auto total = actorAV->GetPermanentActorValue(av);
-        auto current = actorAV->GetActorValue(av);
-
-        return total > 0 ? current / (total + temporary) : 1.0;
-    }
-
-    RE::TESForm* DefeatActor::getEquippedSource(HitSource source) {
-        auto actor = getActor();
-        RE::TESForm* form = nullptr;
-        auto equipped_right = actor->GetEquippedObject(false);
-        if (equipped_right != nullptr && equipped_right->GetFormID() == source) {
-            form = equipped_right;
-        } else {
-            auto equipped_left = actor->GetEquippedObject(true);
-            if (equipped_left != nullptr && equipped_left->GetFormID() == source) {
-                form = equipped_left;
-            }
-        }
-        return form;
-    }
-
-    bool DefeatActor::wornHasAnyKeyword(std::list<std::string> kwds) {
-        auto actor = getActor();
-
-        bool ret = false;
-
-        auto visitor = WornVisitor([&kwds, &ret](RE::InventoryEntryData* a_entry) {
-            auto loc_object = a_entry->GetObject();
-            RE::TESObjectARMO* loc_armor = nullptr;
-            if (loc_object != nullptr && loc_object->IsArmor()) {
-                loc_armor = static_cast<RE::TESObjectARMO*>(loc_object);
-                if (loc_armor != nullptr) {
-                    for (const std::string& kwd : kwds) {
-                        SKSE::log::trace("wornHasAnyKeyword - {}:{}", loc_armor->GetFullName(), kwd);
-                        if (loc_armor->HasKeywordString(kwd)) {
-                            ret = true;
-                            return RE::BSContainer::ForEachResult::kStop;
-                        }
-                    }
-                }
-            }
-            return RE::BSContainer::ForEachResult::kContinue;
-        });
-        actor->GetInventoryChanges()->VisitWornItems(visitor);
-        return ret;
-    }
-
-    bool DefeatActor::hasHitImmunity() {
-        spinLock();
-        if (hitImmunityExpiration != _minTime) {
-            if (std::chrono::high_resolution_clock::now() < hitImmunityExpiration) {
-                spinUnlock();
-                return true;
-            } else {
-                hitImmunityExpiration = _minTime;
-            }
-        }
-        spinUnlock();
-        return false;
-    }
-
-    void DefeatActor::addHitImmunity(int ms) {
-        spinLock();
-        hitImmunityExpiration = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(ms);
-        spinUnlock();
-    }
-
-    void DefeatActor::setLastHitAggressor(DefeatActorType lastHitAggressor) {
-        spinLock();
-        _lastHitAggressor = lastHitAggressor;
-        spinUnlock();
-    }
-
-    bool DefeatActor::isSurrender() {
-        bool ret;
-        spinLock();
-        ret = _isSurrender;
-        spinUnlock();
-        return ret;
-    }
-
-    bool DefeatActor::isCreature() {
-        auto actor = getActor();
-        if (actor != nullptr && actor->HasKeywordString("ActorTypeNPC")) {
-            return false;
-        }
-        return true;
-    }
-
-    // TODO:
-    bool DefeatActor::isFollower() { return false; }
-
-    bool DefeatActor::notInFlyingState() {
-        SKSE::log::trace("notInFlyingState");
-        return getActor()->AsActorState()->GetFlyState() == RE::FLY_STATE::kNone;
-    }
-
-    bool DefeatActor::isSatisfied() {
-        if (_defeatManager->Forms.SatisfiedSPL == nullptr) {
-            return false;
-        }
-        return getActor()->HasSpell(_defeatManager->Forms.SatisfiedSPL);
-    }
-
-    bool DefeatActor::isKDImmune() {
-        if (_defeatManager->Forms.MiscMagicEffects.ImmunityEFF == nullptr) {
-            return false;
-        }
-        return getActor()->GetMagicTarget()->HasMagicEffect(_defeatManager->Forms.MiscMagicEffects.ImmunityEFF);
-    }
-
-    bool DefeatActor::isKDAllowed() {
-        auto actor = getActor();
-        if (getActor()->IsInKillMove() || isKDImmune() || actor->HasKeywordString("FavorBrawlEvent")) {
-            //        SKSE::log::trace("isKDAllowed - false {} {} {}",
-            //                         getActor()->IsInKillMove(), isKDImmune(),
-            //                         actor->HasKeywordString("FavorBrawlEvent"));
-            return false;
-        }
-        if (_defeatManager->Forms.MiscQuests.DGIntimidateQuest != nullptr &&
-            _defeatManager->Forms.MiscQuests.DGIntimidateQuest->IsEnabled()) {
-            SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
-            return false;
-        }
-        return true;
-    }
-
-    bool DefeatActor::isTied() {
-        if (_defeatManager->SoftDependency.ZaZ) {
-            return wornHasAnyKeyword(std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
-        }
-        return false;
-    }
-
-    void DefeatActor::setVulnerability(float vulnerability) {
-        spinLock();
-        if (vulnerability > 100) vulnerability = 100;
-        _vulnerability = vulnerability;
-        spinUnlock();
-    }
-
-    float DefeatActor::getVulnerability() {
-        float ret;
-        spinLock();
-        ret = _vulnerability;
-        spinUnlock();
-        return ret;
-    }
-
-    bool DefeatActor::isIgnoreActorOnHit() {
-        bool ret;
-        extraData->spinLock();
-        ret = extraData->getValue().ignoreActorOnHit;
-        extraData->spinUnlock();
-        return ret;
-    };
-
-    int DefeatActor::getSexLabGender() {
-        int ret;
-        extraData->spinLock();
-        ret = extraData->getValue().sexLabGender;
-        extraData->spinUnlock();
-        return ret;
-    };
-
-    int DefeatActor::getSexLabSexuality() {
-        int ret;
-        extraData->spinLock();
-        ret = extraData->getValue().sexLabSexuality;
-        extraData->spinUnlock();
-        return ret;
-    };
-
-    bool DefeatActor::isSexLabAllowed() {
-        if (!isCreature()) {
-            return true;
-        }
-        bool ret;
-        extraData->spinLock();
-        ret = extraData->getValue().sexLabAllowed;
-        extraData->spinUnlock();
-        return ret;
-    }
-
-    bool DefeatActor::isDefeatAllowed2PC() {
-        bool ret = true;
-        if (isCreature()) {
-            extraData->spinLock();
-            std::string raceKey = extraData->getValue().sexLabRaceKey;
-            extraData->spinUnlock();
-            auto set = _defeatManager->getConfig()->Config.RaceAllowedPvic->get();
-            if (auto search = set.find(raceKey); search == set.end()) {
-                ret = false;
-            }
-        }
-        return ret;
-    }
-
-    bool DefeatActor::isDefeatAllowed2NvN() {
-        bool ret = true;
-        if (isCreature()) {
-            extraData->spinLock();
-            std::string raceKey = extraData->getValue().sexLabRaceKey;
-            extraData->spinUnlock();
-            auto set = _defeatManager->getConfig()->Config.RaceAllowedNVN->get();
-            if (auto search = set.find(raceKey); search == set.end()) {
-                ret = false;
-            }
-        }
-        return ret;
-    }
-
-    std::string DefeatActor::getSexLabRaceKey() {
-        std::string ret;
-        extraData->spinLock();
-        ret = extraData->getValue().sexLabRaceKey;
-        extraData->spinUnlock();
-        return ret;
-    }
-
-    float DefeatActor::getDynamicDefeat() {
-        spinLock();
-        auto ret = _dynamicDefeat;
-        spinUnlock();
-        return ret;
-    }
-
-    SpinLock* DefeatActor::getDynamicDefeatSpinLock() {
-        if (_dynamicDefeatSpinLock == nullptr) {
-            _dynamicDefeatSpinLock = new SpinLock();
-        }
-        return _dynamicDefeatSpinLock;
-    }
-
-    void DefeatActor::incrementDynamicDefeat(float val) {
-        spinLock();
-        _dynamicDefeat += val;
-        if (_dynamicDefeat > 1) {
-            _dynamicDefeat = 1;
-        }
-        spinUnlock();
-    }
-
-    void DefeatActor::decrementDynamicDefeat(float val) {
-        spinLock();
-        _dynamicDefeat -= val;
-        if (_dynamicDefeat < 0) {
-            _dynamicDefeat = 0;
-        }
-        spinUnlock();
-    }
-
-    void DefeatActor::resetDynamicDefeat() {
-        spinLock();
-        _dynamicDefeat = 0;
-        spinUnlock();
-    }
-
-    bool DefeatActor::isFemale() { return getSexLabGender() == 1; }
-
-    bool DefeatActor::IsStraight() { return getSexLabSexuality() >= 65; }
-
-    bool DefeatActor::IsGay() { return getSexLabSexuality() <= 35; }
-
-    bool DefeatActor::IsBisexual() {
-        auto ratio = getSexLabSexuality();
-        return (ratio < 65 && ratio > 35);
-    }
-
-    bool DefeatActor::isDefeatAllowedByAgressor(DefeatActorType aggressor) {
-        if (isPlayer()) {
-            //SKSE::log::trace("isDefeatAllowedByAgressor {}", aggressor->isDefeatAllowed2PC());
+        
+    bool IDefeatActorManager::isDefeatAllowedByAgressor(DefeatActorType target, DefeatActorType aggressor) {
+        if (target->isPlayer()) {
             return aggressor->isDefeatAllowed2PC();
         }
         return aggressor->isDefeatAllowed2NvN();
     };
 
-    bool DefeatActor::IsSexualAssaulterByAggressor(DefeatActorType aggressor) {
-        return hasSexInterestByAggressor(aggressor) && hasSexCombinationWithAggressor(aggressor);
+    bool IDefeatActorManager::IsSexualAssaulAllowedByAggressor(DefeatActorType target, DefeatActorType aggressor) {
+        return hasSexInterestByAggressor(target, aggressor) && hasSexCombinationWithAggressor(target, aggressor);
     };
 
-    bool DefeatActor::hasSexInterestByAggressor(DefeatActorType aggressor) {
+    bool DefeatActorManager::hasSexInterestByAggressor(DefeatActorType target, DefeatActorType aggressor) {
         if (aggressor->isSatisfied()) {
             SKSE::log::trace("CheckAggressor: isSatisfied");
             return false;
         }
-        if (isPlayer()) {
+        if (target->isPlayer()) {
             return randomChanse(_defeatManager->getConfig()->Config.PvicRaped->get());
         }
-        if (isFollower()) {
+        if (target->isFollower()) {
             return randomChanse(_defeatManager->getConfig()->Config.NVNRapedFollower->get());
         }
         return randomChanse(_defeatManager->getConfig()->Config.NVNRaped->get());
     }
 
-    void DefeatActor::setState(DefeatActor::States state) {
-        spinLock();
-        _state = state;
-        spinUnlock();
-    };
-    DefeatActor::States DefeatActor::getState() {
-        DefeatActor::States ret;
-        spinLock();
-        ret = _state;
-        spinUnlock();
-        return ret;
-    };
-
-    bool DefeatActor::hasSexCombinationWithAggressor(DefeatActorType aggressor) {
+    bool DefeatActorManager::hasSexCombinationWithAggressor(DefeatActorType target, DefeatActorType aggressor) {
         auto mcmConfig = _defeatManager->getConfig();
-        if (isPlayer()) {
+        if (target->isPlayer()) {
             if (!aggressor->isCreature()) {
                 bool aggressorFemale = aggressor->isFemale();
                 if (!mcmConfig->Config.SexualityPvic->get()) {
                     return (!aggressorFemale && mcmConfig->Config.MaleHunterPvic->get()) ||
                            (aggressorFemale && mcmConfig->Config.FemaleHunterPvic->get());
                 } else {
-                    bool victimFemale = isFemale();
+                    bool victimFemale = target->isFemale();
                     if (!aggressorFemale && victimFemale) {  // Male on Female
                         return mcmConfig->Config.MaleHunterPvic->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
@@ -439,7 +82,7 @@ namespace SexLabDefeat {
                     }
                 }
             } else {
-                if (aggressor->notInFlyingState()) {
+                if (notInFlyingState(aggressor)) {
                     if (!mcmConfig->Config.SexLab.UseCreatureGender->get()) {
                         return true;
                     }
@@ -453,7 +96,7 @@ namespace SexLabDefeat {
                 }
             }
         } else {
-            bool victimFemale = isFemale();
+            bool victimFemale = target->isFemale();
             if (!aggressor->isCreature()) {
                 bool aggressorFemale = aggressor->isFemale();
                 if (!mcmConfig->Config.SexualityNVN->get()) {
@@ -467,20 +110,18 @@ namespace SexLabDefeat {
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && victimFemale) {  // Female on Female
-                        return mcmConfig->Config.GalOnGal->get() &&
-                               (aggressor->IsGay() || aggressor->IsBisexual());
+                        return mcmConfig->Config.GalOnGal->get() && (aggressor->IsGay() || aggressor->IsBisexual());
 
                     } else if (aggressorFemale && !victimFemale) {  // Female on Male
                         return mcmConfig->Config.GalOnMale->get() &&
                                (aggressor->IsStraight() || aggressor->IsBisexual());
 
                     } else if (!aggressorFemale && !victimFemale) {  // Male on Male
-                        return mcmConfig->Config.MaleOnMale->get() &&
-                               (aggressor->IsGay() || aggressor->IsBisexual());
+                        return mcmConfig->Config.MaleOnMale->get() && (aggressor->IsGay() || aggressor->IsBisexual());
                     }
                 }
             } else {
-                if (aggressor->notInFlyingState()) {
+                if (notInFlyingState(aggressor)) {
                     if (!mcmConfig->Config.SexLab.UseCreatureGender->get()) {
                         return true;
                     }
@@ -511,74 +152,128 @@ namespace SexLabDefeat {
         return false;
     }
 
-    bool DefeatActor::CheckAggressor(DefeatActorType aggressor) {
+    bool DefeatActorManager::checkAggressor(DefeatActorType target, DefeatActorType aggressor) {
         if (aggressor->isIgnoreActorOnHit()) {
             SKSE::log::trace("CheckAggressor: false - isIgnoreActorOnHit");
             return false;
         }
 
-        if (isSurrender() || _defeatManager->getConfig()->Config.EveryonePvic->get()) {
+        if (target->isSurrender() || _defeatManager->getConfig()->Config.EveryonePvic->get()) {
             return true;
         } else {
-            if (!aggressor->isSexLabAllowed() || !isDefeatAllowedByAgressor(aggressor)) {
+            if (!aggressor->isSexLabAllowed() || !isDefeatAllowedByAgressor(target, aggressor)) {
                 return false;
             }
             if (aggressor->isCreature() && !_defeatManager->getConfig()->Config.HuntCrea->get()) {
                 return true;
             } else {
                 // sexuality
-                return IsSexualAssaulterByAggressor(aggressor);
+                return hasSexInterestByAggressor(target, aggressor);
             }
         }
     };
 
-    
-    DefetPlayerActor::DefetPlayerActor(RE::Actor* actor, DefeatIManager* defeatManager)
-        : DefeatActor(actor, defeatManager) {
-        if (_defeatManager->SoftDependency.LRGPatch) {
-            _LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(
-                [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
-                PapyrusInterface::ObjectVariableConfig(true, false)));
+    bool IDefeatActorManager::validForAggressorRole(RE::Actor* actor) {
+        if (actor == nullptr || actor->IsGhost()) {
+            return false;
         }
+        return true;
     }
 
-    float DefetPlayerActor::getVulnerability() {
-        if (!_defeatManager->SoftDependency.LRGPatch) {
-            return 0;
+    bool IDefeatActorManager::validForAggressorRoleOverPlayer(RE::Actor* actor) {
+        if (actor == nullptr || actor->IsGhost()) {
+            return false;
         }
-        float ret = 0;
-        if (_defeatManager->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
-            _defeatManager->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
+        return true;
+    }
 
-            extraData->spinLock();
-            ret = extraData->getValue().DFWVulnerability;
-            extraData->spinUnlock();
+    bool DefeatActorManager::validPlayerForVictimRole(RE::Actor* actor) {
+        if (actor == nullptr || actor->IsOnMount() || actor->HasKeywordString("DefeatActive")) {
+            return false;
+        }
+        if (!actor->HasKeywordString("ActorTypeNPC")) {
+            return _defeatManager->getConfig()->Config.BeastImmunity->get();
+        }
+        return true;
+    }
+    float IDefeatActorManager::getDistanceBetween(DefeatActorType source, DefeatActorType target) {
+        auto a1 = source->getActor()->GetPosition();
+        auto a2 = target->getActor()->GetPosition();
+        return a1.GetDistance(a2);
+    }
+    float IDefeatActorManager::getHeadingAngleBetween(DefeatActorType source, DefeatActorType target) {
+        auto a1 = target->getActor()->GetPosition();
+        return source->getActor()->GetHeadingAngle(a1, false);
+    }
+    float IDefeatActorManager::getActorValuePercentage(DefeatActorType source, RE::ActorValue av) {
+        auto actor = source->getActor();
+        auto actorAV = actor->AsActorValueOwner();
 
+        auto temporary = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, av);
+        auto total = actorAV->GetPermanentActorValue(av);
+        auto current = actorAV->GetActorValue(av);
+
+        return total > 0 ? current / (total + temporary) : 1.0;
+    }
+    RE::TESForm* IDefeatActorManager::getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource) {
+        auto actor = source->getActor();
+        RE::TESForm* form = nullptr;
+        auto equipped_right = actor->GetEquippedObject(false);
+        if (equipped_right != nullptr && equipped_right->GetFormID() == hitSource) {
+            form = equipped_right;
         } else {
-            ret = _LRGVulnerabilityVar->get();
+            auto equipped_left = actor->GetEquippedObject(true);
+            if (equipped_left != nullptr && equipped_left->GetFormID() == hitSource) {
+                form = equipped_left;
+            }
         }
-        SKSE::log::trace("DefetPlayerActor::getVulnerability {}", static_cast<int>(ret));
+        return form;
+    }
+    bool IDefeatActorManager::wornHasAnyKeyword(DefeatActorType source, std::list<std::string> kwds) {
+        return wornHasAnyKeyword(*source, kwds);
+    }
+
+    bool IDefeatActorManager::wornHasAnyKeyword(DefeatActor& source, std::list<std::string> kwds) {
+        auto actor = source.getActor();
+
+        bool ret = false;
+
+        auto visitor = SexLabDefeat::WornVisitor([&kwds, &ret](RE::InventoryEntryData* a_entry) {
+            auto loc_object = a_entry->GetObject();
+            RE::TESObjectARMO* loc_armor = nullptr;
+            if (loc_object != nullptr && loc_object->IsArmor()) {
+                loc_armor = static_cast<RE::TESObjectARMO*>(loc_object);
+                if (loc_armor != nullptr) {
+                    for (const std::string& kwd : kwds) {
+                        SKSE::log::trace("wornHasAnyKeyword - {}:{}", loc_armor->GetFullName(), kwd);
+                        if (loc_armor->HasKeywordString(kwd)) {
+                            ret = true;
+                            return RE::BSContainer::ForEachResult::kStop;
+                        }
+                    }
+                }
+            }
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        actor->GetInventoryChanges()->VisitWornItems(visitor);
         return ret;
     }
-
-    PapyrusInterface::ObjectPtr SexLabDefeat::DefetPlayerActor::getLRGDefeatPlayerVulnerabilityScript() const {
-        if (!_defeatManager->SoftDependency.LRGPatch || _defeatManager->Forms.LRGPatch.DefeatVulnerability == nullptr ||
-            _defeatManager->Forms.LRGPatch.DefeatVulnerability->aliases.size() == 0) {
-            return nullptr;
-        }
-        const auto alias1 = _defeatManager->Forms.LRGPatch.DefeatVulnerability->aliases[0];
-        if (alias1 == nullptr) {
-            return nullptr;
-        }
-        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias1);
-        if (refAlias == nullptr) {
-            return nullptr;
-        }
-        auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-        auto policy = vm->GetObjectHandlePolicy();
-        auto handle = policy->GetHandleForObject(refAlias->GetVMTypeID(), refAlias);
-        PapyrusInterface::ObjectPtr object = nullptr;
-        vm->FindBoundObject(handle, "DefeatPlayer_Vulnerability", object);
-        return object;
+    bool IDefeatActorManager::hasKeywordString(DefeatActorType source, std::string kwd) {
+        return source->getActor()->HasKeywordString(kwd);
     }
+    bool IDefeatActorManager::notInFlyingState(DefeatActorType source) {
+        return notInFlyingState(*source);
+    }
+    bool IDefeatActorManager::notInFlyingState(DefeatActor& source) {
+        return source.getActor()->AsActorState()->GetFlyState() == RE::FLY_STATE::kNone;
+    }
+    bool IDefeatActorManager::hasSpell(DefeatActorType source, RE::SpellItem* spell) {
+        return spell != nullptr && source->getActor()->HasSpell(spell);
+    }
+    bool IDefeatActorManager::hasMagicEffect(DefeatActorType source, RE::EffectSetting* effect) {
+        return effect != nullptr && source->getActor()->GetMagicTarget()->HasMagicEffect(effect);
+    }
+    bool IDefeatActorManager::isInKillMove(DefeatActorType source) { return source->getActor()->IsInKillMove(); }
+    bool IDefeatActorManager::isQuestEnabled(RE::TESQuest* quest) { return quest != nullptr && quest->IsEnabled(); }
+    bool IDefeatActorManager::isInCombat(DefeatActorType source) { return source->getActor()->IsInCombat(); }
 }

@@ -14,7 +14,7 @@ namespace SexLabDefeat {
         }
     }
 
-    void DefeatConfig::Setup(SexLabDefeat::DefeatIManager* defeatManager) { _defeatManager = defeatManager; }
+    void DefeatConfig::Setup(SexLabDefeat::IDefeatManager* defeatManager) { _defeatManager = defeatManager; }
 
     void DefeatConfig::Reset() {
         LoadScriptObjects();

@@ -58,9 +58,12 @@ set(source_files ${source_files}
     src/DefeatPapyrus.cpp
     src/DefeatHooks.cpp
 	src/DefeatDeferredExpiringValue.cpp
+    src/DefeatActor.cpp
     src/DefeatActorManager.cpp
     src/DefeatCombatManager.cpp
     src/DefeatManager.cpp
+	src/PapyrusInterface/ExpiringFunctionCallQueue.cpp
+	src/PapyrusInterface/ActorExtraDataCallQueue.cpp
 )
 
 # Setup your SKSE plugin as an SKSE plugin!

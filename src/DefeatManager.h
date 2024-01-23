@@ -2,9 +2,11 @@
 
 #include <Defeat.h>
 
+#include "DefeatActorManager.h"
+
 namespace SexLabDefeat {
 
-    class DefeatManager : public DefeatIManager {
+    class DefeatManager : public IDefeatManager {
     public:
         DefeatManager(DefeatConfig* defeatConfig);
         DefeatManager(DefeatManager const&) = delete;
@@ -21,7 +23,7 @@ namespace SexLabDefeat {
 
         void load();
         void reset();
-        void reInitializeWidget() const;
+        void reInitializeWidget();
         PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
         void setWidget(DefeatWidget* widget);
         void setActorState(RE::Actor* target_actor, DefeatActor::States state);

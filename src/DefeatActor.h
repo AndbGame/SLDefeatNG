@@ -1,7 +1,9 @@
 #pragma once
 
 #include <Defeat.h>
-#include "DefeatManager.h"
 
 namespace SexLabDefeat {
+
+    class DefeatActorImpl : public IDefeatActor {
+    };
 }

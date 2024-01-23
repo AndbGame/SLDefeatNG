@@ -115,6 +115,7 @@ namespace SexLabDefeat {
             RE::BSFixedString _varName;
         };
 
+
         struct EmptyRequestCallback : public RE::BSScript::IStackCallbackFunctor {
         public:
             EmptyRequestCallback(std::string info) { _info = info; }
