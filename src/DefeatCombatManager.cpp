@@ -322,7 +322,7 @@ namespace SexLabDefeat {
     }
 
     void DefeatCombatManager::shedulePlayerDeplateDynamicDefeat() {
-        auto player = this->getDefeatManager()->getActorManager()->getPlayerImpl();
+        auto player = this->getDefeatManager()->getActorManager()->getPlayer();
         if (!player->sheduleDeplateDynamicDefeat()) {
             return;
         }

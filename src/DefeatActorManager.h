@@ -16,10 +16,10 @@ namespace SexLabDefeat {
 
         void reset();
 
-        DefeatPlayerActorImplType getPlayerImpl() override { return _player; }
-        DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr);
+        std::shared_ptr<DefeatPlayerActorImpl> getPlayerImpl() { return _player; }
+        DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) override;
 
-        DefeatActorImplType getDefeatActorImpl(RE::Actor* actor) override;
+        std::shared_ptr<DefeatActorImpl> getDefeatActorImpl(RE::Actor* actor);
         DefeatActorType getDefeatActor(RE::Actor* actor) override;
 
         bool validPlayerForVictimRole(RE::Actor* actor) override;
@@ -34,8 +34,8 @@ namespace SexLabDefeat {
         SoftDependencyType getSoftDependency() override;
 
     protected:
-        std::map<RE::FormID, DefeatActorImplType> _actorMap;
-        DefeatPlayerActorImplType _player;
+        std::map<RE::FormID, std::shared_ptr<DefeatActorImpl>> _actorMap;
+        std::shared_ptr<DefeatPlayerActorImpl> _player;
 
         IDefeatManager* _defeatManager;
     };

@@ -192,7 +192,6 @@ namespace SexLabDefeat {
 
     class ActorExtraData {
     public:
-        RE::FormID formId;
         bool ignoreActorOnHit = true;
         int sexLabGender = 0;
         int sexLabSexuality = 0;
@@ -203,11 +202,8 @@ namespace SexLabDefeat {
 
     class DefeatActor;
     class DefeatPlayerActor;
-    class IDefeatActorImpl;
     using DefeatActorType = std::shared_ptr<DefeatActor>;
     using DefeatPlayerActorType = std::shared_ptr<DefeatPlayerActor>;
-    using DefeatActorImplType = std::shared_ptr<IDefeatActorImpl>;
-    using DefeatPlayerActorImplType = std::shared_ptr<IDefeatActorImpl>;
 
     using HitSource = RE::FormID;
     using HitProjectile = RE::FormID;
@@ -273,11 +269,9 @@ namespace SexLabDefeat {
     using HitEventType = HitEvent;
 
 
-    class IDefeatActorManager : public SpinLock {
+    class IDefeatActorManager abstract : public SpinLock {
     public:
-        virtual DefeatPlayerActorImplType getPlayerImpl() = 0;
         virtual DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) = 0;
-        virtual DefeatActorImplType getDefeatActorImpl(RE::Actor* actor) = 0;
         virtual DefeatActorType getDefeatActor(RE::Actor* actor) = 0;
 
         /* Pre Checks functions */
@@ -353,7 +347,7 @@ namespace SexLabDefeat {
         virtual void setVulnerability(float vulnerability) = 0;
 
         virtual void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) = 0;
-        virtual void responseExtraData(ActorExtraData data) = 0;
+        virtual void setExtraData(ActorExtraData data) = 0;
         bool isExtraDataExpired() const { return clock::now() > _data.extraDataExpiration; }
         virtual void setExtraDataExpirationFor(std::chrono::milliseconds ms) = 0;
 
@@ -436,9 +430,7 @@ namespace SexLabDefeat {
         void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
             _impl->requestExtraData(TesActor, callback, timeoutMs);
         }
-        void responseExtraData(ActorExtraData data) override {
-            _impl->responseExtraData(data);
-        }
+        void setExtraData(ActorExtraData data) override { _impl->setExtraData(data); }
 
     protected:
         RE::Actor* _actor;
@@ -461,8 +453,6 @@ namespace SexLabDefeat {
         void stopDeplateDynamicDefeat() { _impl->stopDeplateDynamicDefeat(); }
     };
 
-    class DynamicDefeatDepleter;
-
     class DefeatCombatManager {
     public:
         struct HitSpamKey {
@@ -483,6 +473,8 @@ namespace SexLabDefeat {
 
         DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager);
         ~DefeatCombatManager();
+        DefeatCombatManager(DefeatCombatManager const&) = delete;
+        void operator=(DefeatCombatManager const& x) = delete;
 
         IDefeatManager* getDefeatManager() { return _defeatManager; };
 

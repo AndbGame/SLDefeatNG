@@ -15,14 +15,13 @@ namespace {
 
         auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
         SexLabDefeat::ActorExtraData data;
-        data.formId = actor->GetFormID();
         data.ignoreActorOnHit = ignoreActorOnHit;
         data.sexLabGender = sexLabGender;
         data.sexLabSexuality = sexLabSexuality;
         data.sexLabAllowed = sexLabAllowed;
         data.sexLabRaceKey = sexLabRaceKey;
         data.DFWVulnerability = DFWVulnerability;
-        defeatActor->responseExtraData(data);
+        defeatActor->extradataQueue->functionResponse(data);
     }
 
     inline void setActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string state) {

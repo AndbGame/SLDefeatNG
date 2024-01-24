@@ -40,7 +40,7 @@ namespace SexLabDefeat {
                     std::shared_ptr<FunctionCallCallback> _callback =
                         std::make_shared<FunctionCallCallback>(callback, clock::now() + timeoutMs);
                     if (_callbackQueue.size() > 100) {
-                        SKSE::log::critical("Unexpected size of _callbackQueue: '{}'. Check papyrus log",
+                        SKSE::log::critical("ExpiringFunctionCallQueue: Unexpected size of _callbackQueue: '{}'. Check papyrus log",
                                             _callbackQueue.size());
                     } else {
                         _callbackQueue.push(_callback);
@@ -59,6 +59,8 @@ namespace SexLabDefeat {
                 _expirationTime = std::chrono::high_resolution_clock::now() + _expiration;
                 if (receiveResponse(val)) {
                     Status = StatusType::FREE;
+                } else {
+                    SKSE::log::critical("ExpiringFunctionCallQueue: Receive response failed");
                 }
             }
 

@@ -3,6 +3,7 @@
 #include <Defeat.h>
 
 #include "DefeatActorManager.h"
+#include "DefeatActor.h"
 
 namespace SexLabDefeat {
 

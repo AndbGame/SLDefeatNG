@@ -8,7 +8,7 @@ namespace SexLabDefeat {
         _actorMap.clear();
 
         auto actor = RE::PlayerCharacter::GetSingleton();
-        DefeatPlayerActorImplType defeatActor =
+        std::shared_ptr<DefeatPlayerActorImpl> defeatActor =
             std::make_shared<DefeatPlayerActorImpl>(actor->GetFormID(), this);
         _actorMap.emplace(actor->GetFormID(), defeatActor);
         _player = defeatActor;
@@ -22,13 +22,13 @@ namespace SexLabDefeat {
         return std::make_shared<DefeatPlayerActor>(defPlayerImpl->_data, actor, defPlayerImpl);
     }
 
-    DefeatActorImplType DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
+    std::shared_ptr<DefeatActorImpl> DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
         assert(actor != nullptr);
         auto formID = actor->GetFormID();
 
         SexLabDefeat::UniqueSpinLock lock(*this);
         auto val = _actorMap.find(formID);
-        DefeatActorImplType defeatActorImpl;
+        std::shared_ptr<DefeatActorImpl> defeatActorImpl;
         if (val == _actorMap.end()) {
             defeatActorImpl = std::make_shared<DefeatActorImpl>(formID, this);
             _actorMap.emplace(formID, defeatActorImpl);

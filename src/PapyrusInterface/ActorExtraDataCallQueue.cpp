@@ -20,6 +20,9 @@ namespace SexLabDefeat {
             }
             return false;
         }
-        bool ActorExtraDataCallQueue::receiveResponse(ActorExtraData val) { return false; }
+        bool ActorExtraDataCallQueue::receiveResponse(ActorExtraData val) {
+            _defActor->setExtraData(val);
+            return true;
+        }
     }
 }

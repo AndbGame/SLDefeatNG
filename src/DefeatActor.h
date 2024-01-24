@@ -2,7 +2,6 @@
 
 #include <Defeat.h>
 
-#include "DefeatActor.h"
 #include "PapyrusInterface\ActorExtraDataCallQueue.h"
 
 namespace SexLabDefeat {
@@ -14,11 +13,13 @@ namespace SexLabDefeat {
         DefeatActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager) {
             _data.TESFormId = formID;
             _defeatActorManager = defeatActorManager;
-            extradataQueue = new PapyrusInterface::ActorExtraDataCallQueue(10min, 1min);
+            extradataQueue = new PapyrusInterface::ActorExtraDataCallQueue(this, 10min, 1min);
         };
         ~DefeatActorImpl() { delete extradataQueue; }
         DefeatActorImpl(DefeatActorImpl const&) = delete;
         void operator=(DefeatActorImpl const& x) = delete;
+
+        PapyrusInterface::ActorExtraDataCallQueue* extradataQueue;
 
         void setHitImmunityFor(std::chrono::milliseconds ms) override {
             UniqueSpinLock lock(*this);
@@ -101,7 +102,7 @@ namespace SexLabDefeat {
         void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
             extradataQueue->functionCall(TesActor, callback, timeoutMs);
         }
-        void responseExtraData(ActorExtraData data) override {
+        void setExtraData(ActorExtraData data) override {
             UniqueSpinLock lock(*this);
             _data.ignoreActorOnHit = data.ignoreActorOnHit;
             _data.sexLabGender = data.sexLabGender;
@@ -110,7 +111,6 @@ namespace SexLabDefeat {
             _data.sexLabRaceKey = data.sexLabRaceKey;
             _data.DFWVulnerability = data.DFWVulnerability;
             _data.extraDataExpiration = clock::now() + 2min;
-            extradataQueue->functionResponse(data);
         }
         bool isSheduledDeplateDynamicDefeat() override { return false; }
         bool sheduleDeplateDynamicDefeat() override { return false; }
@@ -120,7 +120,6 @@ namespace SexLabDefeat {
 
     protected:
         IDefeatActorManager* _defeatActorManager;
-        PapyrusInterface::ActorExtraDataCallQueue* extradataQueue;
     };
 
     class DefeatPlayerActorImpl : public DefeatActorImpl {
