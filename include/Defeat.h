@@ -527,8 +527,6 @@ namespace SexLabDefeat {
 
         virtual GameState getGameState() = 0;
         virtual void setGameState(GameState state) = 0;
-                
-        //virtual void requestActorExtraData(DefeatActorType target) = 0;
 
         virtual DefeatWidget* getWidget() = 0;
         virtual DefeatCombatManager* getCombatManager() = 0;
