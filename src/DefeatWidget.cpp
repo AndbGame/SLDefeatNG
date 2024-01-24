@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatWidget.h"
 
 namespace SexLabDefeat {
 

@@ -4,14 +4,13 @@ namespace SexLabDefeat {
     namespace PapyrusInterface {
         bool ActorExtraDataCallQueue::sendRequest(RE::Actor* actor) {
             if (actor != nullptr) {
-                SexLabDefeat::Papyrus::CallbackPtr callback(
+                CallbackPtr callback(
                     new EmptyRequestCallback("DeferredActorExtraDataInitializer"));
 
                 SKSE::log::trace("DeferredActorExtraDataInitializer - <{:08X}:{}>", actor->GetFormID(),
                                  actor->GetName());
 
-                if (SexLabDefeat::Papyrus::DispatchStaticCall("defeat_skse_api", "requestActorExtraData", callback,
-                                                              std::move(actor))) {
+                if (DispatchStaticCall("defeat_skse_api", "requestActorExtraData", callback, std::move(actor))) {
                     return true;
                 }
                 SKSE::log::error("Failed to dispatch static call [defeat_skse_api::requestActorExtraData].");

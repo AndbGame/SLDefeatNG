@@ -2,6 +2,8 @@
 
 #include <Defeat.h>
 
+#include "../DefeatSpinLock.h"
+
 namespace SexLabDefeat {
     namespace PapyrusInterface {
 

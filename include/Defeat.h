@@ -1,17 +1,23 @@
 #pragma once
 
-#include <DefeatSpinLock.h>
-#include <DefeatUtils.h>
-#include <DefeatPapyrus.h>
-#include <DefeatForms.h>
-
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
 namespace SexLabDefeat {
-    
+
+    using time_point = std::chrono::high_resolution_clock::time_point;
+    using milliseconds = std::chrono::milliseconds;
+    using clock = std::chrono::high_resolution_clock;
+
+    static const std::chrono::high_resolution_clock::time_point emptyTime =
+        std::chrono::high_resolution_clock::time_point::min();
+
     namespace PapyrusInterface {
+
+        template <class T> class ObjectVariable;
+
+        using ObjectPtr = RE::BSTSmartPointer<RE::BSScript::Object>;
+
         using StringSetVar = ObjectVariable<std::set<std::string_view>>;
         using StringSetVarPtr = std::unique_ptr<StringSetVar>;
 
@@ -25,7 +31,88 @@ namespace SexLabDefeat {
         using FloatVarPtr = std::unique_ptr<FloatVar>;
     }
 
+    class SpinLock;
     class IDefeatManager;
+    class IDefeatWidget;
+    class DefeatActor;
+    class DefeatPlayerActor;
+    class IDefeatActorImpl;
+    using DefeatActorType = std::shared_ptr<DefeatActor>;
+    using DefeatPlayerActorType = std::shared_ptr<DefeatPlayerActor>;
+    using IDefeatActorImplType = std::shared_ptr<IDefeatActorImpl>;
+
+    class ActorExtraData {
+    public:
+        bool ignoreActorOnHit = true;
+        int sexLabGender = 0;
+        int sexLabSexuality = 0;
+        bool sexLabAllowed = 0;
+        std::string sexLabRaceKey = "";
+        float DFWVulnerability = 0;
+    };
+
+    enum DefeatActorStates { NONE, ACTIVE, DISACTIVE, KNONKOUT_STATE, STANDING_STRUGGLE_STATE, KNONKDOWN_STATE };
+    enum class DefeatActorStateFlags : uint8_t {
+        NONE = 0,
+        KNOCK_ALLOWED = 1 << 0,
+        // flag2 = 1 << 1,
+        // flag3 = 1 << 2,
+        // flag3 = 1 << 3,
+        // flag3 = 1 << 4,
+        // flag3 = 1 << 5,
+        // flag3 = 1 << 6,
+        // flag3 = 1 << 7
+    };
+    struct DefeatActorDataType {
+        RE::FormID TESFormId = 0;
+        clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
+        RE::FormID lastHitAggressor = 0;
+        bool isSurrender = false;
+        DefeatActorStates state = DefeatActorStates::ACTIVE;
+        DefeatActorStateFlags flags = DefeatActorStateFlags::NONE;
+        float dynamicDefeat = 0;
+        float vulnerability = 0;
+
+        /* External Papyrus Data */
+        clock::time_point extraDataExpiration = SexLabDefeat::emptyTime;
+        float DFWVulnerability = 0;
+        bool ignoreActorOnHit = true;
+        int sexLabGender = -1;
+        int sexLabSexuality = -1;
+        bool sexLabAllowed = false;
+        std::string sexLabRaceKey = "";
+    };
+    
+    using HitSource = RE::FormID;
+    using HitProjectile = RE::FormID;
+
+    enum HitResult { SKIP, KNONKOUT, STANDING_STRUGGLE, KNONKDOWN };
+
+    struct RawHitEvent {
+        RE::TESObjectREFR* target;
+        RE::TESObjectREFR* aggressor;
+        RE::FormID source;
+        RE::FormID projectile;
+        bool isPowerAttack = false;
+        bool isSneakAttack = false;
+        bool isBashAttack = false;
+        bool isHitBlocked = false;
+    };
+
+    class HitEvent {
+    public:
+        HitEvent() = default;
+        ~HitEvent() = default;
+        DefeatActorType target = nullptr;
+        DefeatActorType aggressor = nullptr;
+        HitSource source;
+        HitProjectile projectile;
+        bool isPowerAttack = false;
+        bool isSneakAttack = false;
+        bool isBashAttack = false;
+        bool isHitBlocked = false;
+    };
+    using HitEventType = HitEvent;
 
     struct SoftDependencyType {
         bool ZaZ = false;
@@ -33,6 +120,48 @@ namespace SexLabDefeat {
         bool LRGPatch = false;
     };
 
+    /***************************************************************************************************
+     * DefeatForms
+     ****************************************************************************************************/
+    struct DefeatForms {
+        RE::TESQuest* DefeatRessourcesQst = nullptr;
+        RE::TESQuest* DefeatMCMQst = nullptr;
+        RE::TESQuest* DefeatPlayerQTE = nullptr;
+
+        RE::TESQuest* SexLabQuestFramework = nullptr;
+
+        RE::SpellItem* SatisfiedSPL = nullptr;
+
+        struct {
+            RE::TESQuest* PlayerQST = nullptr;
+            RE::TESQuest* PAQst = nullptr;
+            RE::TESQuest* PlayerActionQst = nullptr;
+            RE::TESQuest* NPCsQst = nullptr;
+            RE::TESQuest* NPCsRefreshQst = nullptr;
+            RE::TESQuest* Robber = nullptr;
+            RE::TESQuest* DGIntimidateQuest = nullptr;
+            RE::TESQuest* WerewolfQst = nullptr;
+        } MiscQuests;
+
+        struct {
+            RE::EffectSetting* ImmunityEFF = nullptr;
+            RE::EffectSetting* HKActionEFF = nullptr;
+            RE::EffectSetting* HKFollowerActionEFF = nullptr;
+            RE::EffectSetting* SexCrimeEFF = nullptr;
+            RE::EffectSetting* NVNAssaultEFF = nullptr;
+        } MiscMagicEffects;
+
+        struct {
+            RE::TESQuest* DefeatVulnerability = nullptr;
+        } LRGPatch;
+
+        struct {
+        } Keywords;
+    };
+
+    /***************************************************************************************************
+     * DefeatConfig
+     ****************************************************************************************************/
     class DefeatConfig {
     public:
         DefeatConfig() = default;
@@ -154,166 +283,9 @@ namespace SexLabDefeat {
         PapyrusInterface::ObjectPtr sslSystemConfig;
     };
 
-    class DefeatWidget : public SpinLock {
-    public:
-        enum State { QTE_METER, DYNAMIC_WIDGET, NONE };
-
-        PapyrusInterface::StringVarPtr widgetRoot;
-        PapyrusInterface::BoolVarPtr widgetReady;
-
-        DefeatWidget();
-        ~DefeatWidget();
-
-        bool isInitialized = false;
-
-        [[nodiscard]] bool setVisible(bool inUITask = false);
-        [[nodiscard]] bool setInvisible(bool inUITask = false);
-        bool getLastVisible();
-        [[nodiscard]] bool setPercent(float value, bool inUITask = false);
-        float getLastPercent();
-
-        State getState();
-        [[nodiscard]] bool startDynamicWidget(bool inUITask = false);
-        [[nodiscard]] bool stopDynamicWidget(bool inUITask = false);
-
-    protected:
-        bool initialize();
-
-        std::string_view getWidgetRootId();
-        std::string_view _rootId;
-
-        RE::GPtr<RE::GFxMovieView> _hudmenu = nullptr;
-        RE::UI* _ui;
-
-        float lastPercent = 0.0;
-        bool lastVisible = false;
-        State state = State::NONE;
-    };
-
-    class ActorExtraData {
-    public:
-        bool ignoreActorOnHit = true;
-        int sexLabGender = 0;
-        int sexLabSexuality = 0;
-        bool sexLabAllowed = 0;
-        std::string sexLabRaceKey = "";
-        float DFWVulnerability = 0;
-    };
-
-    class DefeatActor;
-    class DefeatPlayerActor;
-    using DefeatActorType = std::shared_ptr<DefeatActor>;
-    using DefeatPlayerActorType = std::shared_ptr<DefeatPlayerActor>;
-
-    using HitSource = RE::FormID;
-    using HitProjectile = RE::FormID;
-
-    enum HitResult { SKIP, KNONKOUT, STANDING_STRUGGLE, KNONKDOWN };
-
-    enum DefeatActorStates { NONE, ACTIVE, DISACTIVE, KNONKOUT_STATE, STANDING_STRUGGLE_STATE, KNONKDOWN_STATE };
-    enum class DefeatActorStateFlags : uint8_t {
-        NONE = 0,
-        KNOCK_ALLOWED = 1 << 0,
-        // flag2 = 1 << 1,
-        // flag3 = 1 << 2,
-        // flag3 = 1 << 3,
-        // flag3 = 1 << 4,
-        // flag3 = 1 << 5,
-        // flag3 = 1 << 6,
-        // flag3 = 1 << 7
-    };
-    struct DefeatActorDataType {
-        RE::FormID TESFormId = 0;
-        clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
-        RE::FormID lastHitAggressor = 0;
-        bool isSurrender = false;
-        DefeatActorStates state = DefeatActorStates::ACTIVE;
-        DefeatActorStateFlags flags = DefeatActorStateFlags::NONE;
-        float dynamicDefeat = 0;
-        float vulnerability = 0;
-
-        /* External Papyrus Data */
-        clock::time_point extraDataExpiration = SexLabDefeat::emptyTime;
-        float DFWVulnerability = 0;
-        bool ignoreActorOnHit = true;
-        int sexLabGender = -1;
-        int sexLabSexuality = -1;
-        bool sexLabAllowed = false;
-        std::string sexLabRaceKey = "";
-    };
-
-    struct RawHitEvent {
-        RE::TESObjectREFR* target;
-        RE::TESObjectREFR* aggressor;
-        RE::FormID source;
-        RE::FormID projectile;
-        bool isPowerAttack = false;
-        bool isSneakAttack = false;
-        bool isBashAttack = false;
-        bool isHitBlocked = false;
-    };
-
-    class HitEvent {
-    public:
-        HitEvent() = default;
-        ~HitEvent() = default;
-        DefeatActorType target = nullptr;
-        DefeatActorType aggressor = nullptr;
-        HitSource source;
-        HitProjectile projectile;
-        bool isPowerAttack = false;
-        bool isSneakAttack = false;
-        bool isBashAttack = false;
-        bool isHitBlocked = false;
-    };
-    using HitEventType = HitEvent;
-
-
-    class IDefeatActorManager abstract : public SpinLock {
-    public:
-        virtual DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) = 0;
-        virtual DefeatActorType getDefeatActor(RE::Actor* actor) = 0;
-
-        /* Pre Checks functions */
-        virtual bool validForAggressorRole(RE::Actor* actor);
-        virtual bool validForAggressorRoleOverPlayer(RE::Actor* actor);
-        virtual bool validPlayerForVictimRole(RE::Actor* actor) = 0;
-        /* / Pre Checks functions  */
-
-        
-        bool isDefeatAllowedByAgressor(DefeatActorType target, DefeatActorType aggressor);
-        bool IsSexualAssaulAllowedByAggressor(DefeatActorType target, DefeatActorType aggressor);
-        virtual bool hasSexInterestByAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
-        virtual bool hasSexCombinationWithAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
-        virtual bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
-                
-        virtual void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) = 0;
-
-        float getDistanceBetween(DefeatActorType source, DefeatActorType target);
-        float getHeadingAngleBetween(DefeatActorType source, DefeatActorType target);
-        float getActorValuePercentage(DefeatActorType source, RE::ActorValue av);
-        RE::TESForm* getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource);
-        bool wornHasAnyKeyword(DefeatActorType source, std::list<std::string> kwds);
-        bool wornHasAnyKeyword(DefeatActor& source, std::list<std::string> kwds);
-        bool hasKeywordString(DefeatActorType source, std::string kwd);
-        bool hasKeywordString(DefeatActor& source, std::string kwd);
-        bool notInFlyingState(DefeatActorType source);
-        bool notInFlyingState(DefeatActor& source);
-        bool hasSpell(DefeatActorType source, RE::SpellItem* spell);
-        bool hasSpell(DefeatActor& source, RE::SpellItem* spell);
-        bool hasMagicEffect(DefeatActorType source, RE::EffectSetting* effect);
-        bool hasMagicEffect(DefeatActor& source, RE::EffectSetting* effect);
-        bool isInKillMove(DefeatActorType source);
-        bool isInKillMove(DefeatActor& source);
-        bool isQuestEnabled(RE::TESQuest* quest);
-        bool isInCombat(DefeatActorType source);
-
-        virtual DefeatConfig* getConfig() = 0;
-        virtual DefeatForms getForms() = 0;
-        virtual SoftDependencyType getSoftDependency() = 0;
-
-    };
-
+    /***************************************************************************************************
+    * IDefeatActor
+    ****************************************************************************************************/
     class IDefeatActor {
     public:
 
@@ -381,7 +353,10 @@ namespace SexLabDefeat {
         DefeatActorDataType _data;
     };
 
-    class IDefeatActorImpl : public IDefeatActor, public SpinLock {
+    /***************************************************************************************************
+     * IDefeatActorImpl
+     ****************************************************************************************************/
+    class IDefeatActorImpl : public IDefeatActor {
         friend class DefeatActorManager;
         friend class IDefeatActorManager;
     public:
@@ -390,8 +365,10 @@ namespace SexLabDefeat {
         virtual bool sheduleDeplateDynamicDefeat() = 0;
         virtual void stopDeplateDynamicDefeat() = 0;
     };
-    using IDefeatActorImplType = std::shared_ptr<IDefeatActorImpl>;
 
+    /***************************************************************************************************
+     * DefeatActor
+     ****************************************************************************************************/
     class DefeatActor : public IDefeatActor {
         friend class DefeatActorManager;
         friend class IDefeatActorManager;
@@ -438,6 +415,9 @@ namespace SexLabDefeat {
         RE::Actor* getTESActor() { return _actor; }
     };
 
+    /***************************************************************************************************
+     * DefeatPlayerActor
+     ****************************************************************************************************/
     class DefeatPlayerActor : public DefeatActor {
         friend class DefeatActorManager;
         friend class IDefeatActorManager;
@@ -452,7 +432,56 @@ namespace SexLabDefeat {
         bool sheduleDeplateDynamicDefeat() { return _impl->sheduleDeplateDynamicDefeat(); }
         void stopDeplateDynamicDefeat() { _impl->stopDeplateDynamicDefeat(); }
     };
+        
+    /***************************************************************************************************
+     * IDefeatActorManager
+     ****************************************************************************************************/
+    class IDefeatActorManager abstract {
+    public:
+        virtual DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) = 0;
+        virtual DefeatActorType getDefeatActor(RE::Actor* actor) = 0;
 
+        /* Pre Checks functions */
+        virtual bool validForAggressorRole(RE::Actor* actor);
+        virtual bool validForAggressorRoleOverPlayer(RE::Actor* actor);
+        virtual bool validPlayerForVictimRole(RE::Actor* actor) = 0;
+        /* / Pre Checks functions  */
+
+        bool isDefeatAllowedByAgressor(DefeatActorType target, DefeatActorType aggressor);
+        bool IsSexualAssaulAllowedByAggressor(DefeatActorType target, DefeatActorType aggressor);
+        virtual bool hasSexInterestByAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
+        virtual bool hasSexCombinationWithAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
+        virtual bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
+
+        virtual void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) = 0;
+
+        float getDistanceBetween(DefeatActorType source, DefeatActorType target);
+        float getHeadingAngleBetween(DefeatActorType source, DefeatActorType target);
+        float getActorValuePercentage(DefeatActorType source, RE::ActorValue av);
+        RE::TESForm* getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource);
+        bool wornHasAnyKeyword(DefeatActorType source, std::list<std::string> kwds);
+        bool wornHasAnyKeyword(DefeatActor& source, std::list<std::string> kwds);
+        bool hasKeywordString(DefeatActorType source, std::string kwd);
+        bool hasKeywordString(DefeatActor& source, std::string kwd);
+        bool notInFlyingState(DefeatActorType source);
+        bool notInFlyingState(DefeatActor& source);
+        bool hasSpell(DefeatActorType source, RE::SpellItem* spell);
+        bool hasSpell(DefeatActor& source, RE::SpellItem* spell);
+        bool hasMagicEffect(DefeatActorType source, RE::EffectSetting* effect);
+        bool hasMagicEffect(DefeatActor& source, RE::EffectSetting* effect);
+        bool isInKillMove(DefeatActorType source);
+        bool isInKillMove(DefeatActor& source);
+        bool isQuestEnabled(RE::TESQuest* quest);
+        bool isInCombat(DefeatActorType source);
+
+        virtual DefeatConfig* getConfig() = 0;
+        virtual DefeatForms getForms() = 0;
+        virtual SoftDependencyType getSoftDependency() = 0;
+    };
+
+    /***************************************************************************************************
+     * DefeatCombatManager
+     ****************************************************************************************************/
     class DefeatCombatManager {
     public:
         struct HitSpamKey {
@@ -512,7 +541,10 @@ namespace SexLabDefeat {
 
         void onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType defActor);
     };
-    
+
+    /***************************************************************************************************
+     * IDefeatManager
+     ****************************************************************************************************/
     class IDefeatManager abstract {
     public:
         enum GameState {
@@ -528,9 +560,32 @@ namespace SexLabDefeat {
         virtual GameState getGameState() = 0;
         virtual void setGameState(GameState state) = 0;
 
-        virtual DefeatWidget* getWidget() = 0;
+        virtual IDefeatWidget* getWidget() = 0;
         virtual DefeatCombatManager* getCombatManager() = 0;
         virtual IDefeatActorManager* getActorManager() = 0;
         virtual DefeatConfig* getConfig() = 0;
+    };
+
+    /***************************************************************************************************
+     * IDefeatWidget
+     ****************************************************************************************************/
+    class IDefeatWidget {
+    public:
+        enum State { QTE_METER, DYNAMIC_WIDGET, NONE };
+
+        [[nodiscard]] 
+        virtual bool setVisible(bool inUITask = false) = 0;
+        [[nodiscard]] 
+        virtual bool setInvisible(bool inUITask = false) = 0;
+        virtual bool getLastVisible() = 0;
+        [[nodiscard]] 
+        virtual bool setPercent(float value, bool inUITask = false) = 0;
+        virtual float getLastPercent() = 0;
+
+        virtual State getState() = 0;
+        [[nodiscard]]
+        virtual bool startDynamicWidget(bool inUITask = false) = 0;
+        [[nodiscard]] 
+        virtual bool stopDynamicWidget(bool inUITask = false) = 0;
     };
 }

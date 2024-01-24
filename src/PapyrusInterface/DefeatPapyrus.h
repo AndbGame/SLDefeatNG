@@ -1,7 +1,10 @@
 #pragma once
 
+#include <Defeat.h>
+
 namespace SexLabDefeat {
-    namespace Papyrus {
+    namespace PapyrusInterface {
+
         using VM = RE::BSScript::Internal::VirtualMachine;
         using ObjectPtr = RE::BSTSmartPointer<RE::BSScript::Object>;
         using ArrayPtr = RE::BSTSmartPointer<RE::BSScript::Array>;
@@ -50,71 +53,30 @@ namespace SexLabDefeat {
         }
 
         inline bool DispatchMethodCall(ObjectPtr a_obj, RE::BSFixedString a_fnName, CallbackPtr a_callback,
-                                        Args* a_args) {
+                                       Args* a_args) {
             auto vm = VM::GetSingleton();
             return vm->DispatchMethodCall(a_obj, a_fnName, a_args, a_callback);
         }
 
         template <class... Args>
         inline bool DispatchMethodCall(ObjectPtr a_obj, RE::BSFixedString a_fnName, CallbackPtr a_callback,
-                                        Args&&... a_args) {
+                                       Args&&... a_args) {
             auto args = RE::MakeFunctionArguments(std::forward<Args>(a_args)...);
             return DispatchMethodCall(a_obj, a_fnName, a_callback, args);
         }
 
-        inline bool DispatchStaticCall(RE::BSFixedString a_class, RE::BSFixedString a_fnName,
-                                        CallbackPtr a_callback, Args* a_args) {
+        inline bool DispatchStaticCall(RE::BSFixedString a_class, RE::BSFixedString a_fnName, CallbackPtr a_callback,
+                                       Args* a_args) {
             auto vm = VM::GetSingleton();
             return vm->DispatchStaticCall(a_class, a_fnName, a_args, a_callback);
         }
 
         template <class... T>
-        inline bool DispatchStaticCall(RE::BSFixedString a_class, RE::BSFixedString a_fnName,
-                                        CallbackPtr a_callback, T&&... a_args) {
+        inline bool DispatchStaticCall(RE::BSFixedString a_class, RE::BSFixedString a_fnName, CallbackPtr a_callback,
+                                       T&&... a_args) {
             auto args = RE::MakeFunctionArguments(std::forward<T>(a_args)...);
             return DispatchStaticCall(a_class, a_fnName, a_callback, args);
         }
-    }
-
-    namespace PapyrusInterface {
-        using VM = RE::BSScript::Internal::VirtualMachine;
-        using ObjectPtr = RE::BSTSmartPointer<RE::BSScript::Object>;
-        using ArrayPtr = RE::BSTSmartPointer<RE::BSScript::Array>;
-        using CallbackPtr = RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor>;
-        using Args = RE::BSScript::IFunctionArguments;
-        using Variable = RE::BSScript::Variable;
-        using ScriptObjectCallbackReceiver = std::function<ObjectPtr()>;
-
-        struct ObjectVariableConfig {
-            ObjectVariableConfig(bool _isProprty = true, bool _isPersistent = false)
-                : isProprty(_isProprty), isPersistent(_isPersistent){};
-
-            bool isProprty = true;
-            bool isPersistent = false;
-        };
-
-        template <class T>
-        class ObjectVariable: public SpinLock {
-        public:
-            enum State { NOT_INITIALIZED, INVALID, FETCHED, NOT_EXIST };
-            ObjectVariable(ScriptObjectCallbackReceiver scriptObjectClb, std::string_view a_var,
-                           ObjectVariableConfig config);
-            ~ObjectVariable() = default;
-
-            T get(T _def = {});
-            void invalidate();
-            State getState();
-
-        protected:
-            T retrieve(T _def);
-            T getFromVM(T _def);
-            T value;
-            State _state = State::NOT_INITIALIZED;
-            ObjectVariableConfig _config;
-            ScriptObjectCallbackReceiver _scriptObjectClb;
-            RE::BSFixedString _varName;
-        };
-
 
         struct EmptyRequestCallback : public RE::BSScript::IStackCallbackFunctor {
         public:

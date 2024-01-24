@@ -4,10 +4,12 @@
 
 #include "DefeatActor.h"
 #include "PapyrusInterface\ActorExtraDataCallQueue.h"
+#include "DefeatUtils.h"
+#include "DefeatSpinLock.h"
 
 namespace SexLabDefeat {
 
-    class DefeatActorManager : public IDefeatActorManager {
+    class DefeatActorManager : public IDefeatActorManager, public SpinLock {
     public:
         DefeatActorManager(IDefeatManager* defeatManager) : _defeatManager(defeatManager) {};
         ~DefeatActorManager() = default;

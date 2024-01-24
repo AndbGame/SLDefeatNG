@@ -1,4 +1,4 @@
-#include "DefeatPapyrus.h"
+#include "ObjectVariable.h"
 
 namespace SexLabDefeat {
     namespace PapyrusInterface {
@@ -8,11 +8,6 @@ namespace SexLabDefeat {
         template class ObjectVariable<int>;
         template class ObjectVariable<std::string_view>;
         template class ObjectVariable<std::set<std::string_view>>;
-
-        void EmptyRequestCallback::operator()(
-            [[maybe_unused]] RE::BSScript::Variable a_result) {
-            SKSE::log::trace("EmptyRequestCallback - {}", _info);
-        }
 
         template <typename T>
         ObjectVariable<T>::ObjectVariable(ScriptObjectCallbackReceiver scriptObjectClb, std::string_view a_var,
@@ -76,8 +71,7 @@ namespace SexLabDefeat {
             if (var == nullptr) {
                 _state = State::NOT_EXIST;
                 SKSE::log::critical("getFromVM - {} '{}' not found in Script Object",
-                                    (_config.isProprty ? "Property" : "Variable"),
-                                    _varName);
+                                    (_config.isProprty ? "Property" : "Variable"), _varName);
                 return _def;
             }
 
@@ -114,7 +108,7 @@ namespace SexLabDefeat {
                         for (RE::BSScript::Variable* it = data->begin(); it != data->end(); it++) {
                             if (it != nullptr && it->IsString()) {
                                 val.insert(it->GetString());
-                                //SKSE::log::trace("getFromVM - var '{}' is array[]='{}'", _varName, it->GetString());
+                                // SKSE::log::trace("getFromVM - var '{}' is array[]='{}'", _varName, it->GetString());
                             }
                         }
                     }

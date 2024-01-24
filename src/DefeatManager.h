@@ -4,6 +4,9 @@
 
 #include "DefeatActorManager.h"
 #include "DefeatActor.h"
+#include "DefeatSpinLock.h"
+#include "DefeatWidget.h"
+#include "PapyrusInterface/DefeatPapyrus.h"
 
 namespace SexLabDefeat {
 

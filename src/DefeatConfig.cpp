@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatConfig.h"
 
 namespace SexLabDefeat {
     void DefeatConfig::readIniConfig() {
@@ -151,7 +151,7 @@ namespace SexLabDefeat {
         if (_defeatManager->Forms.DefeatMCMQst == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatMCMQst'");
         } else {
-            DefeatMCMScr = SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatMCMQst, "defeatmcmscr");
+            DefeatMCMScr = PapyrusInterface::GetScriptObject(_defeatManager->Forms.DefeatMCMQst, "defeatmcmscr");
             if (DefeatMCMScr == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'defeatmcmscr'");
             }
@@ -160,8 +160,7 @@ namespace SexLabDefeat {
         if (_defeatManager->Forms.DefeatRessourcesQst == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatRessourcesQst'");
         } else {
-            defeatconfig =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.DefeatRessourcesQst, "defeatconfig");
+            defeatconfig = PapyrusInterface::GetScriptObject(_defeatManager->Forms.DefeatRessourcesQst, "defeatconfig");
             if (defeatconfig == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'defeatconfig'");
             }
@@ -171,7 +170,7 @@ namespace SexLabDefeat {
             SKSE::log::error("LoadForms : Not found TESQuest 'SexLabQuestFramework'");
         } else {
             sslSystemConfig =
-                SexLabDefeat::Papyrus::GetScriptObject(_defeatManager->Forms.SexLabQuestFramework, "sslSystemConfig");
+                PapyrusInterface::GetScriptObject(_defeatManager->Forms.SexLabQuestFramework, "sslSystemConfig");
             if (sslSystemConfig == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'sslSystemConfig'");
             }

@@ -3,6 +3,7 @@
 #include <Defeat.h>
 
 #include "ExpiringFunctionCallQueue.h"
+#include "DefeatPapyrus.h"
 
 namespace SexLabDefeat {
     namespace PapyrusInterface {

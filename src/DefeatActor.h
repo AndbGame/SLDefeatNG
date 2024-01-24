@@ -3,10 +3,12 @@
 #include <Defeat.h>
 
 #include "PapyrusInterface\ActorExtraDataCallQueue.h"
+#include "DefeatSpinLock.h"
+#include "PapyrusInterface\ObjectVariable.h"
 
 namespace SexLabDefeat {
 
-    class DefeatActorImpl : public IDefeatActorImpl {
+    class DefeatActorImpl : public IDefeatActorImpl, public SpinLock {
         friend class DefeatActorManager;
 
     public:

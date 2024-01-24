@@ -96,7 +96,7 @@ namespace SexLabDefeat {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
         } else {
             auto DefeatQTEWidget =
-                SexLabDefeat::Papyrus::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+                PapyrusInterface::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
             if (DefeatQTEWidget == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
             } else {
@@ -215,8 +215,7 @@ namespace SexLabDefeat {
         if (Forms.DefeatPlayerQTE == nullptr) {
             SKSE::log::error("LoadForms : Not found TESQuest 'DefeatPlayerQTE'");
         } else {
-            auto DefeatQTEWidget =
-                SexLabDefeat::Papyrus::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
+            auto DefeatQTEWidget = PapyrusInterface::GetScriptObject(Forms.DefeatPlayerQTE, "DefeatQTEWidget");
             if (DefeatQTEWidget == nullptr) {
                 SKSE::log::error("LoadForms : Not found attached Script 'DefeatQTEWidget'");
             } else {

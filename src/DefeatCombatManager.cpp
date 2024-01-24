@@ -1,4 +1,4 @@
-#include "Defeat.h"
+#include "DefeatCombatManager.h"
 
 namespace SexLabDefeat {
 
@@ -287,7 +287,7 @@ namespace SexLabDefeat {
         event.target->incrementDynamicDefeat(DefeatAmount);
         auto totalDynamicDefeat = event.target->getDynamicDefeat();
 
-        if (widget->getState() != DefeatWidget::State::DYNAMIC_WIDGET && totalDynamicDefeat > 0) {
+        if (widget->getState() != IDefeatWidget::State::DYNAMIC_WIDGET && totalDynamicDefeat > 0) {
             if (!widget->startDynamicWidget()) {
                 SKSE::log::error("Error on start Dynamic Widget");
             }
@@ -361,7 +361,7 @@ namespace SexLabDefeat {
                         auto totalDynamicDefeat = player->getDynamicDefeat();
                         auto widget = _defeatManager->getWidget();
                         if (widget != nullptr) {
-                            if (totalDynamicDefeat <= 0 && widget->getState() == DefeatWidget::State::DYNAMIC_WIDGET) {
+                            if (totalDynamicDefeat <= 0 && widget->getState() == IDefeatWidget::State::DYNAMIC_WIDGET) {
                                 if (!widget->stopDynamicWidget(true)) {
                                     SKSE::log::error("Error on stop Dynamic Widget");
                                 }

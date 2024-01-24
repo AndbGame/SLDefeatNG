@@ -1,3 +1,3 @@
-#include "Defeat.h"
+#include "DefeatUtils.h"
 
 RE::InventoryChanges::IItemChangeVisitor::~IItemChangeVisitor(){};
