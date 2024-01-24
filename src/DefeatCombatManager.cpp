@@ -5,13 +5,9 @@ namespace SexLabDefeat {
     DefeatCombatManager::DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager) {
         _defeatActorManager = defeatActorManager;
         _defeatManager = defeatManager;
-        _hitGuardExpiration = std::chrono::milliseconds(_defeatManager->getConfig()->HIT_SPAM_GUARD_EXPIRATION_MS);
-        hitSpamGuardSpinLock = new SpinLock();
     }
 
     DefeatCombatManager::~DefeatCombatManager() {
-        hitSpamGuardSpinLock->spinLock();
-        delete hitSpamGuardSpinLock;
     }
 
     void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* target_actor) {
@@ -47,14 +43,16 @@ namespace SexLabDefeat {
 
         if (aggr_actor && _defeatActorManager->validForAggressorRole(aggr_actor) &&
             _defeatActorManager->validPlayerForVictimRole(target_actor)) {
-            if (registerAndCheckHitGuard(event.aggressor, event.source, event.projectile)) {
+
+            auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
+            targetActor->setLastHitAggressor(aggrActor);
+
+            if (targetActor->registerAndCheckHitGuard(aggrActor, event.source, event.projectile)) {
                 SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
                                     event.aggressor->GetFormID(), event.aggressor->GetName());
                 return;
             }
 
-            auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
-            targetActor->setLastHitAggressor(aggrActor);
             auto hitEvent = createHitEvent(targetActor, aggrActor, event);
             auto target_actor_handle = target_actor->GetHandle();
             auto aggr_actor_handle = aggr_actor->GetHandle();
@@ -68,42 +66,6 @@ namespace SexLabDefeat {
         }
     }
 
-    bool DefeatCombatManager::registerAndCheckHitGuard(RE::TESObjectREFR* actor, RE::FormID source,
-                                                       RE::FormID projectile) {
-        std::array<HitSpamKey, 2> toCheck{{{0, 0}, {0, 0}}};
-
-        if (source != 0) {
-            toCheck[0].actor = actor->GetFormID();
-            toCheck[0].source = source;
-        }
-        if (projectile != 0) {
-            toCheck[1].actor = actor->GetFormID();
-            toCheck[1].source = projectile;
-        }
-        //
-        auto now = std::chrono::high_resolution_clock::now();
-
-        hitSpamGuardSpinLock->spinLock();
-
-        for (const auto& key : toCheck) {
-            if (key.source == 0) {
-                continue;
-            }
-            if (auto search = hitSpamGuard.find(key); search != hitSpamGuard.end()) {
-                if ((search->second + _hitGuardExpiration) > now) {
-                    hitSpamGuardSpinLock->spinUnlock();
-                    return true;
-                } else {
-                    hitSpamGuardSpinLock->spinUnlock();
-                    search->second = now;
-                    return false;
-                }
-            }
-            hitSpamGuard.insert({key, now});
-        }
-        hitSpamGuardSpinLock->spinUnlock();
-        return false;
-    }
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
         SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),
                          event.aggressor->getTESFormId());

@@ -8,7 +8,7 @@ namespace SexLabDefeat {
 
             CFG_PAPYUNHOOK = _iniConfig.get<int>("General.UnhookPapyrus");
             CFG_LOGGING = _iniConfig.get<int>("General.Logging");
-            HIT_SPAM_GUARD_EXPIRATION_MS = _iniConfig.get<int>("CombatManager.HitSpamGuardMs");
+            HIT_SPAM_GUARD_EXPIRATION_MS = milliseconds(_iniConfig.get<int>("CombatManager.HitSpamGuardMs"));
         } catch (std::exception& ex) {
             SKSE::log::warn("ERROR LOADING ini FILE: {}", ex.what());
         }

@@ -31,7 +31,6 @@ namespace SexLabDefeat {
         using FloatVarPtr = std::unique_ptr<FloatVar>;
     }
 
-    class SpinLock;
     class IDefeatManager;
     class IDefeatWidget;
     class DefeatActor;
@@ -270,7 +269,7 @@ namespace SexLabDefeat {
 
         bool CFG_PAPYUNHOOK = true;
         int CFG_LOGGING = 2;
-        int HIT_SPAM_GUARD_EXPIRATION_MS = 500;
+        milliseconds HIT_SPAM_GUARD_EXPIRATION_MS = 500ms;
         float KD_FAR_MAX_DISTANCE = 1500.0;
     private:
         boost::property_tree::ptree _iniConfig;
@@ -349,6 +348,8 @@ namespace SexLabDefeat {
             return (ratio < 65 && ratio > 35);
         }
 
+        virtual bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) = 0;
+
     protected:
         DefeatActorDataType _data;
     };
@@ -408,6 +409,9 @@ namespace SexLabDefeat {
             _impl->requestExtraData(TesActor, callback, timeoutMs);
         }
         void setExtraData(ActorExtraData data) override { _impl->setExtraData(data); }
+        bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override {
+            return _impl->registerAndCheckHitGuard(aggressor, source, projectile);
+        };
 
     protected:
         RE::Actor* _actor;
@@ -484,21 +488,6 @@ namespace SexLabDefeat {
      ****************************************************************************************************/
     class DefeatCombatManager {
     public:
-        struct HitSpamKey {
-            RE::FormID actor;
-            RE::FormID source;
-        };
-        struct ProjectileSpamHash {
-            std::size_t operator()(const HitSpamKey& k) const {
-                return std::hash<std::uint32_t>()(k.actor) ^ (std::hash<std::uint32_t>()(k.source) << 1);
-            }
-        };
-
-        struct HitSpamEqual {
-            bool operator()(const HitSpamKey& lhs, const HitSpamKey& rhs) const {
-                return lhs.actor == rhs.actor && lhs.source == rhs.source;
-            }
-        };
 
         DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager);
         ~DefeatCombatManager();
@@ -526,18 +515,10 @@ namespace SexLabDefeat {
         void interruptPlayerDeplateDynamicDefeat();
 
         bool KDOnlyBack(bool opt, HitEventType event);
-        bool registerAndCheckHitGuard(RE::TESObjectREFR* actor, RE::FormID source, RE::FormID projectile);
-
 
     protected:
         IDefeatActorManager* _defeatActorManager;
         IDefeatManager* _defeatManager;
-        //std::unordered_map<HitSpamKey, std::chrono::high_resolution_clock::time_point, ProjectileSpamHash, HitSpamEqual>
-        //    projectileSpamGuard;
-        std::unordered_map<HitSpamKey, std::chrono::high_resolution_clock::time_point, ProjectileSpamHash, HitSpamEqual>
-            hitSpamGuard;
-        std::chrono::milliseconds _hitGuardExpiration;
-        SpinLock* hitSpamGuardSpinLock;
 
         void onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType defActor);
     };

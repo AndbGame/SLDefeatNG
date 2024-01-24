@@ -12,6 +12,21 @@ namespace SexLabDefeat {
         friend class DefeatActorManager;
 
     public:
+        struct HitSpamKey {
+            RE::FormID actor;
+            RE::FormID source;
+        };
+        struct ProjectileSpamHash {
+            std::size_t operator()(const HitSpamKey& k) const {
+                return std::hash<std::uint32_t>()(k.actor) ^ (std::hash<std::uint32_t>()(k.source) << 1);
+            }
+        };
+        struct HitSpamEqual {
+            bool operator()(const HitSpamKey& lhs, const HitSpamKey& rhs) const {
+                return lhs.actor == rhs.actor && lhs.source == rhs.source;
+            }
+        };
+
         DefeatActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager) {
             _data.TESFormId = formID;
             _defeatActorManager = defeatActorManager;
@@ -118,10 +133,14 @@ namespace SexLabDefeat {
         bool sheduleDeplateDynamicDefeat() override { return false; }
         void stopDeplateDynamicDefeat() override {}
 
+        bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override;
+
         IDefeatActorManager* getActorManager() override { return _defeatActorManager; }
 
     protected:
         IDefeatActorManager* _defeatActorManager;
+
+        std::unordered_map<HitSpamKey, time_point, ProjectileSpamHash, HitSpamEqual> hitSpamGuard;
     };
 
     class DefeatPlayerActorImpl : public DefeatActorImpl {

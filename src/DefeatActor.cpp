@@ -92,6 +92,42 @@ namespace SexLabDefeat {
         return ret;
     }
 
+    
+    bool DefeatActorImpl::registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source,
+                                                   RE::FormID projectile) {
+        std::array<HitSpamKey, 2> toCheck{{{0, 0}, {0, 0}}};
+
+        if (source != 0) {
+            toCheck[0].actor = aggressor->getTESFormId();
+            toCheck[0].source = source;
+        }
+        if (projectile != 0) {
+            toCheck[1].actor = aggressor->getTESFormId();
+            toCheck[1].source = projectile;
+        }
+
+        auto now = clock::now();
+
+        UniqueSpinLock lock(*this);
+
+        for (const auto& key : toCheck) {
+            if (key.source == 0) {
+                continue;
+            }
+            if (auto search = hitSpamGuard.find(key); search != hitSpamGuard.end()) {
+                if ((search->second + getActorManager()->getConfig()->HIT_SPAM_GUARD_EXPIRATION_MS) > now) {
+                    return true;
+                } else {
+                    search->second = now;
+                    return false;
+                }
+            }
+            hitSpamGuard.insert({key, now});
+        }
+
+        return false;
+    }
+
     DefeatPlayerActorImpl::DefeatPlayerActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager)
         : DefeatActorImpl(formID, defeatActorManager) {
         if (defeatActorManager->getSoftDependency().LRGPatch) {
