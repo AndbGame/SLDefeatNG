@@ -2,6 +2,80 @@
 
 namespace SexLabDefeat {
 
+    DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl) {
+        assert(actor != nullptr);
+        _data = data;
+        _actor = actor;
+        _impl = impl;
+    }
+
+    bool DefeatActor::isCreature() { return !_impl->getActorManager()->hasKeywordString(*this, "ActorTypeNPC"); }
+
+    bool DefeatActor::isSatisfied() {
+        return _impl->getActorManager()->hasSpell(*this, _impl->getActorManager()->getForms().SatisfiedSPL);
+    }
+
+    bool DefeatActor::isKDImmune() {
+        return _impl->getActorManager()->hasMagicEffect(
+            *this, _impl->getActorManager()->getForms().MiscMagicEffects.ImmunityEFF);
+    }
+
+    bool DefeatActor::isKDAllowed() {
+        if (_impl->getActorManager()->isInKillMove(*this) || isKDImmune() ||
+            _impl->getActorManager()->hasKeywordString(*this, "FavorBrawlEvent")) {
+            //        SKSE::log::trace("isKDAllowed - false {} {} {}",
+            //                         getActor()->IsInKillMove(), isKDImmune(),
+            //                         actor->HasKeywordString("FavorBrawlEvent"));
+            return false;
+        }
+        if (_impl->getActorManager()->isQuestEnabled(
+                _impl->getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
+            SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
+            return false;
+        }
+        return true;
+    }
+
+    bool DefeatActor::isTied() {
+        if (_impl->getActorManager()->getSoftDependency().ZaZ) {
+            return _impl->getActorManager()->wornHasAnyKeyword(
+                *this, std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
+        }
+        return false;
+    }
+
+    bool DefeatActor::isSexLabAllowed() {
+        if (!isCreature()) {
+            return true;
+        }
+        return IDefeatActor::isSexLabAllowed();
+    }
+
+    bool DefeatActor::isDefeatAllowed2PC() {
+        bool ret = true;
+        if (isCreature()) {
+            std::string raceKey = getSexLabRaceKey();
+            auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedPvic->get();
+            if (auto search = set.find(raceKey); search == set.end()) {
+                ret = false;
+            }
+        }
+        return ret;
+    }
+
+    bool DefeatActor::isDefeatAllowed2NvN() {
+        bool ret = true;
+        if (isCreature()) {
+            std::string raceKey = getSexLabRaceKey();
+            auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedNVN->get();
+            if (auto search = set.find(raceKey); search == set.end()) {
+                ret = false;
+            }
+        }
+        return ret;
+    }
+
+
     float DefeatPlayerActor::getVulnerability() {
         if (!_impl->getActorManager()->getSoftDependency().LRGPatch) {
             return 0;

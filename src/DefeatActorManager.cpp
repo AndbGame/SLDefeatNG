@@ -19,7 +19,7 @@ namespace SexLabDefeat {
         }
         auto defPlayerImpl = getPlayerImpl();
         SexLabDefeat::UniqueSpinLock lock(*(defPlayerImpl.get()));
-        return std::make_shared<DefeatPlayerActor>(getActorData(defPlayerImpl), actor, defPlayerImpl);
+        return std::make_shared<DefeatPlayerActor>(defPlayerImpl->_data, actor, defPlayerImpl);
     }
 
     DefeatActorImplType DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
@@ -42,7 +42,7 @@ namespace SexLabDefeat {
         assert(actor != nullptr);
         auto defPlayerImpl = getDefeatActorImpl(actor);
         SexLabDefeat::UniqueSpinLock lock(*defPlayerImpl);
-        return std::make_shared<DefeatPlayerActor>(getActorData(defPlayerImpl), actor, defPlayerImpl);
+        return std::make_shared<DefeatPlayerActor>(defPlayerImpl->_data, actor, defPlayerImpl);
     }
         
     bool IDefeatActorManager::isDefeatAllowedByAgressor(DefeatActorType target, DefeatActorType aggressor) {
@@ -193,7 +193,7 @@ namespace SexLabDefeat {
         auto vm = RE::SkyrimVM::GetSingleton();
         if (vm) {
             const auto handle = vm->handlePolicy.GetHandleForObject(static_cast<RE::VMTypeID>(RE::FormType::Reference),
-                                                                    getTesActor(target));
+                                                                    target->getTESActor());
             if (handle && handle != vm->handlePolicy.EmptyHandle()) {
                 RE::BSFixedString eventStr = "KNONKDOWN";
                 if (event == HitResult::KNONKOUT) {
@@ -202,7 +202,8 @@ namespace SexLabDefeat {
                     eventStr = "STANDING_STRUGGLE";
                 }
 
-                auto eventArgs = RE::MakeFunctionArguments((RE::TESObjectREFR*)getTesActor(aggressor), std::move(eventStr));
+                auto eventArgs =
+                    RE::MakeFunctionArguments((RE::TESObjectREFR*)aggressor->getTESActor(), std::move(eventStr));
 
                 vm->SendAndRelayEvent(
                     handle,
@@ -330,9 +331,5 @@ namespace SexLabDefeat {
     bool IDefeatActorManager::isInKillMove(DefeatActor& source) { return source.getTESActor()->IsInKillMove(); }
     bool IDefeatActorManager::isQuestEnabled(RE::TESQuest* quest) { return quest != nullptr && quest->IsEnabled(); }
     bool IDefeatActorManager::isInCombat(DefeatActorType source) { return source->getTESActor()->IsInCombat(); }
-
-    RE::Actor* IDefeatActorManager::getTesActor(DefeatActorType source) { return source->getTESActor(); }
-
-    DefeatActorDataType IDefeatActorManager::getActorData(DefeatActorImplType source) { return source->_data; }
 
 }

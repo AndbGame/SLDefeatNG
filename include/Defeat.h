@@ -318,9 +318,6 @@ namespace SexLabDefeat {
         virtual DefeatForms getForms() = 0;
         virtual SoftDependencyType getSoftDependency() = 0;
 
-    protected:
-        static RE::Actor* getTesActor(DefeatActorType source);
-        static DefeatActorDataType getActorData(DefeatActorImplType source);
     };
 
     class IDefeatActor {
@@ -336,18 +333,18 @@ namespace SexLabDefeat {
         bool isSame(IDefeatActor* actor) const { return actor->getTESFormId() == getTESFormId(); };
 
         virtual bool isPlayer() { return false; };
-        bool isSurrender() { return _data.isSurrender; }
+        bool isSurrender() const { return _data.isSurrender; }
 
         bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
         virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
 
-        RE::FormID getLastHitAggressorFormId() { return _data.lastHitAggressor; }
+        RE::FormID getLastHitAggressorFormId() const { return _data.lastHitAggressor; }
         virtual void setLastHitAggressor(DefeatActorType lastHitAggressor) = 0;
 
-        DefeatActorStates getState() { return _data.state; };
+        DefeatActorStates getState() const { return _data.state; };
         virtual void setState(DefeatActorStates state) = 0;
 
-        float getDynamicDefeat() { return _data.dynamicDefeat; }
+        float getDynamicDefeat() const { return _data.dynamicDefeat; }
         virtual void incrementDynamicDefeat(float val) = 0;
         virtual void decrementDynamicDefeat(float val) = 0;
         virtual void resetDynamicDefeat() = 0;
@@ -360,28 +357,28 @@ namespace SexLabDefeat {
         bool isExtraDataExpired() const { return clock::now() > _data.extraDataExpiration; }
         virtual void setExtraDataExpirationFor(std::chrono::milliseconds ms) = 0;
 
-        float getDFWVulnerability() { return _data.DFWVulnerability; }
+        float getDFWVulnerability() const { return _data.DFWVulnerability; }
         virtual void setDFWVulnerability(float vulnerability) = 0;
 
-        bool isIgnoreActorOnHit() { return _data.ignoreActorOnHit; };
+        bool isIgnoreActorOnHit() const { return _data.ignoreActorOnHit; };
         virtual void setIgnoreActorOnHit(bool val) = 0;
 
-        int getSexLabGender() { return _data.sexLabGender; };
+        int getSexLabGender() const { return _data.sexLabGender; };
         virtual void setSexLabGender(int val) = 0;
 
-        int getSexLabSexuality() { return _data.sexLabSexuality; };
+        int getSexLabSexuality() const { return _data.sexLabSexuality; };
         virtual void setSexLabSexuality(int val) = 0;
 
         virtual bool isSexLabAllowed() { return _data.sexLabAllowed; }
         virtual void setSexLabAllowed(bool val) = 0;
 
-        std::string getSexLabRaceKey() { return _data.sexLabRaceKey; }
+        std::string getSexLabRaceKey() const { return _data.sexLabRaceKey; }
         virtual void setSexLabRaceKey(std::string val) = 0;
 
-        bool isFemale() { return getSexLabGender() == 1; }
-        bool IsStraight() { return getSexLabSexuality() >= 65; }
-        bool IsGay() { return getSexLabSexuality() <= 35; }
-        bool IsBisexual() {
+        bool isFemale() const { return getSexLabGender() == 1; }
+        bool IsStraight() const { return getSexLabSexuality() >= 65; }
+        bool IsGay() const { return getSexLabSexuality() <= 35; }
+        bool IsBisexual() const {
             auto ratio = getSexLabSexuality();
             return (ratio < 65 && ratio > 35);
         }
@@ -391,6 +388,7 @@ namespace SexLabDefeat {
     };
 
     class IDefeatActorImpl : public IDefeatActor, public SpinLock {
+        friend class DefeatActorManager;
         friend class IDefeatActorManager;
     public:
         virtual IDefeatActorManager* getActorManager() = 0;
@@ -401,109 +399,39 @@ namespace SexLabDefeat {
     using IDefeatActorImplType = std::shared_ptr<IDefeatActorImpl>;
 
     class DefeatActor : public IDefeatActor {
+        friend class DefeatActorManager;
         friend class IDefeatActorManager;
 
     public:
-        DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl) {
-            assert(actor != nullptr);
-            _data = data;
-            _actor = actor;
-            _impl = impl;
-        };
+        DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl);
         ~DefeatActor() {}
 
-        bool isCreature() { return !_impl->getActorManager()->hasKeywordString(*this, "ActorTypeNPC"); }
+        bool isCreature();
         // TODO:
         bool isFollower() { return false; }
-        bool isSatisfied() {
-            return _impl->getActorManager()->hasSpell(*this, _impl->getActorManager()->getForms().SatisfiedSPL);
-        }
-
-        bool isKDImmune() {
-            return _impl->getActorManager()->hasMagicEffect(
-                *this, _impl->getActorManager()->getForms().MiscMagicEffects.ImmunityEFF);
-        }
-        bool isKDAllowed() {
-            if (_impl->getActorManager()->isInKillMove(*this) || isKDImmune() ||
-                _impl->getActorManager()->hasKeywordString(*this, "FavorBrawlEvent")) {
-                //        SKSE::log::trace("isKDAllowed - false {} {} {}",
-                //                         getActor()->IsInKillMove(), isKDImmune(),
-                //                         actor->HasKeywordString("FavorBrawlEvent"));
-                return false;
-            }
-            if (_impl->getActorManager()->isQuestEnabled(
-                    _impl->getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
-                SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
-                return false;
-            }
-            return true;
-        }
-
-        bool isTied() {
-            if (_impl->getActorManager()->getSoftDependency().ZaZ) {
-                return _impl->getActorManager()->wornHasAnyKeyword(
-                    *this, std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
-            }
-            return false;
-        }
-        bool isSexLabAllowed() override {
-            if (!isCreature()) {
-                return true;
-            }
-            return IDefeatActor::isSexLabAllowed();
-        }
-
-        bool isDefeatAllowed2PC() {
-            bool ret = true;
-            if (isCreature()) {
-                std::string raceKey = getSexLabRaceKey();
-                auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedPvic->get();
-                if (auto search = set.find(raceKey); search == set.end()) {
-                    ret = false;
-                }
-            }
-            return ret;
-        }
-
-        bool isDefeatAllowed2NvN() {
-            bool ret = true;
-            if (isCreature()) {
-                std::string raceKey = getSexLabRaceKey();
-                auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedNVN->get();
-                if (auto search = set.find(raceKey); search == set.end()) {
-                    ret = false;
-                }
-            }
-            return ret;
-        }
+        bool isSatisfied();
+        bool isKDImmune();
+        bool isKDAllowed();
+        bool isTied();
+        bool isSexLabAllowed() override;
+        bool isDefeatAllowed2PC();
+        bool isDefeatAllowed2NvN();
 
         void setHitImmunityFor(std::chrono::milliseconds ms) override { _impl->setHitImmunityFor(ms); };
-
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             _impl->setLastHitAggressor(lastHitAggressor);
         }
-
         void incrementDynamicDefeat(float val) override { _impl->incrementDynamicDefeat(val); }
-
         void decrementDynamicDefeat(float val) override { _impl->decrementDynamicDefeat(val); }
-
         void resetDynamicDefeat() override { _impl->resetDynamicDefeat(); }
-
         void setState(DefeatActorStates state) override { _impl->setState(state); };
-
         void setVulnerability(float vulnerability) override { _impl->setVulnerability(vulnerability); };
         void setDFWVulnerability(float vulnerability) override { _impl->setDFWVulnerability(vulnerability); };
-
         void setIgnoreActorOnHit(bool val) override { _impl->setIgnoreActorOnHit(val); };
-
         void setSexLabGender(int val) override { _impl->setSexLabGender(val); };
-
         void setSexLabSexuality(int val) override { _impl->setSexLabSexuality(val); };
-
         void setSexLabAllowed(bool val) override { _impl->setSexLabAllowed(val); }
-
         void setSexLabRaceKey(std::string val) override { _impl->setSexLabRaceKey(val); }
-
         void setExtraDataExpirationFor(std::chrono::milliseconds ms) override { _impl->setExtraDataExpirationFor(ms); }
         void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
             _impl->requestExtraData(TesActor, callback, timeoutMs);
@@ -515,13 +443,12 @@ namespace SexLabDefeat {
     protected:
         RE::Actor* _actor;
         IDefeatActorImplType _impl;
-
-
         RE::Actor* getTESActor() { return _actor; }
     };
 
     class DefeatPlayerActor : public DefeatActor {
         friend class DefeatActorManager;
+        friend class IDefeatActorManager;
 
     public:
         DefeatPlayerActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl)
