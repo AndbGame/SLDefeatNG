@@ -32,13 +32,14 @@ namespace SexLabDefeat {
     }
 
     class IDefeatManager;
+    class IDefeatActorManager;
     class IDefeatWidget;
     class DefeatActor;
+    class IDefeatActor;
     class DefeatPlayerActor;
-    class IDefeatActorImpl;
     using DefeatActorType = std::shared_ptr<DefeatActor>;
+    using IDefeatActorType = std::shared_ptr<IDefeatActor>;
     using DefeatPlayerActorType = std::shared_ptr<DefeatPlayerActor>;
-    using IDefeatActorImplType = std::shared_ptr<IDefeatActorImpl>;
 
     class ActorExtraData {
     public:
@@ -348,23 +349,15 @@ namespace SexLabDefeat {
             return (ratio < 65 && ratio > 35);
         }
 
-        virtual bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) = 0;
-
-    protected:
-        DefeatActorDataType _data;
-    };
-
-    /***************************************************************************************************
-     * IDefeatActorImpl
-     ****************************************************************************************************/
-    class IDefeatActorImpl : public IDefeatActor {
-        friend class DefeatActorManager;
-        friend class IDefeatActorManager;
-    public:
-        virtual IDefeatActorManager* getActorManager() = 0;
         virtual bool isSheduledDeplateDynamicDefeat() = 0;
         virtual bool sheduleDeplateDynamicDefeat() = 0;
         virtual void stopDeplateDynamicDefeat() = 0;
+        virtual bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) = 0;
+
+        virtual IDefeatActorManager* getActorManager() = 0;
+
+    protected:
+        DefeatActorDataType _data;
     };
 
     /***************************************************************************************************
@@ -375,7 +368,7 @@ namespace SexLabDefeat {
         friend class IDefeatActorManager;
 
     public:
-        DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl);
+        DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl);
         ~DefeatActor() {}
 
         bool isCreature();
@@ -413,9 +406,15 @@ namespace SexLabDefeat {
             return _impl->registerAndCheckHitGuard(aggressor, source, projectile);
         };
 
+        bool isSheduledDeplateDynamicDefeat() { return _impl->isSheduledDeplateDynamicDefeat(); }
+        bool sheduleDeplateDynamicDefeat() { return _impl->sheduleDeplateDynamicDefeat(); }
+        void stopDeplateDynamicDefeat() { _impl->stopDeplateDynamicDefeat(); }
+
+        IDefeatActorManager* getActorManager() override { return _impl->getActorManager(); };
+
     protected:
         RE::Actor* _actor;
-        IDefeatActorImplType _impl;
+        IDefeatActorType _impl;
         RE::Actor* getTESActor() { return _actor; }
     };
 
@@ -427,14 +426,10 @@ namespace SexLabDefeat {
         friend class IDefeatActorManager;
 
     public:
-        DefeatPlayerActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl)
+        DefeatPlayerActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl)
             : DefeatActor(data, actor, impl){};
         bool isPlayer() override { return true; };
         float getVulnerability() override;
-
-        bool isSheduledDeplateDynamicDefeat() { return _impl->isSheduledDeplateDynamicDefeat(); }
-        bool sheduleDeplateDynamicDefeat() { return _impl->sheduleDeplateDynamicDefeat(); }
-        void stopDeplateDynamicDefeat() { _impl->stopDeplateDynamicDefeat(); }
     };
         
     /***************************************************************************************************
@@ -484,43 +479,12 @@ namespace SexLabDefeat {
     };
 
     /***************************************************************************************************
-     * DefeatCombatManager
+     * IDefeatCombatManager
      ****************************************************************************************************/
-    class DefeatCombatManager {
+    class IDefeatCombatManager {
     public:
-
-        DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager);
-        ~DefeatCombatManager();
-        DefeatCombatManager(DefeatCombatManager const&) = delete;
-        void operator=(DefeatCombatManager const& x) = delete;
-
-        IDefeatManager* getDefeatManager() { return _defeatManager; };
-
-        void onActorEnteredToCombatState(RE::Actor* target_actor);
-        void onHitHandler(RawHitEvent event);
-        HitEventType createHitEvent(DefeatActorType target_actor, DefeatActorType aggr_actor,
-                                            RawHitEvent rawHitEvent);
-
-        void calculatePlayerHit(HitEventType event);
-        HitResult KDWay(HitEventType event);
-        HitResult KDWayWound(HitEventType event);
-        HitResult KDWayExhaustion(HitEventType event);
-        HitResult KDWayVulnerability(HitEventType event);
-        HitResult KDWayDynamic(HitEventType event);
-        float KDWayDynamicCalculation(HitEventType event);
-        HitResult KDWayPowerAtk(HitEventType event);
-
-        void shedulePlayerDeplateDynamicDefeat();
-        std::atomic<bool> _playerDeplateDynamicDefeatStopThread = true;
-        void interruptPlayerDeplateDynamicDefeat();
-
-        bool KDOnlyBack(bool opt, HitEventType event);
-
-    protected:
-        IDefeatActorManager* _defeatActorManager;
-        IDefeatManager* _defeatManager;
-
-        void onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType defActor);
+        virtual void onActorEnteredToCombatState(RE::Actor* target_actor) = 0;
+        virtual void onHitHandler(RawHitEvent event) = 0;
     };
 
     /***************************************************************************************************
@@ -542,7 +506,7 @@ namespace SexLabDefeat {
         virtual void setGameState(GameState state) = 0;
 
         virtual IDefeatWidget* getWidget() = 0;
-        virtual DefeatCombatManager* getCombatManager() = 0;
+        virtual IDefeatCombatManager* getCombatManager() = 0;
         virtual IDefeatActorManager* getActorManager() = 0;
         virtual DefeatConfig* getConfig() = 0;
     };

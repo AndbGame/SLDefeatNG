@@ -3,6 +3,7 @@
 #include <Defeat.h>
 
 #include "DefeatActorManager.h"
+#include "DefeatCombatManager.h"
 #include "DefeatActor.h"
 #include "DefeatSpinLock.h"
 #include "DefeatWidget.h"
@@ -23,7 +24,6 @@ namespace SexLabDefeat {
         DefeatCombatManager* getCombatManager() override { return _defeatCombatManager; };
         DefeatActorManager* getActorManager() override { return _defeatActorManager; };
         DefeatConfig* getConfig() override { return _defeatConfig; };
-        //void requestActorExtraData(DefeatActorType target) override;
 
         void load();
         void reset();

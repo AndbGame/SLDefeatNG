@@ -2,7 +2,7 @@
 
 namespace SexLabDefeat {
 
-    DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorImplType impl) {
+    DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl) {
         assert(actor != nullptr);
         _data = data;
         _actor = actor;

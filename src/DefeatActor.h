@@ -8,7 +8,7 @@
 
 namespace SexLabDefeat {
 
-    class DefeatActorImpl : public IDefeatActorImpl, public SpinLock {
+    class DefeatActorImpl : public IDefeatActor, public SpinLock {
         friend class DefeatActorManager;
 
     public:
@@ -129,11 +129,12 @@ namespace SexLabDefeat {
             _data.DFWVulnerability = data.DFWVulnerability;
             _data.extraDataExpiration = clock::now() + 2min;
         }
+
+        bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override;
+
         bool isSheduledDeplateDynamicDefeat() override { return false; }
         bool sheduleDeplateDynamicDefeat() override { return false; }
         void stopDeplateDynamicDefeat() override {}
-
-        bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override;
 
         IDefeatActorManager* getActorManager() override { return _defeatActorManager; }
 

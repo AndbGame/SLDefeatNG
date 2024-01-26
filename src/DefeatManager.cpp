@@ -1,6 +1,5 @@
 #include "DefeatManager.h"
 
-
 namespace {
 
     SexLabDefeat::DefeatManager* _defeatManager;

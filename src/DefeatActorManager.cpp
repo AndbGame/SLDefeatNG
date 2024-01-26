@@ -201,7 +201,7 @@ namespace SexLabDefeat {
                 } else if (event == HitResult::STANDING_STRUGGLE) {
                     eventStr = "STANDING_STRUGGLE";
                 }
-
+                SKSE::log::trace("playerKnockDownEvent <{}>", eventStr);
                 auto eventArgs =
                     RE::MakeFunctionArguments((RE::TESObjectREFR*)aggressor->getTESActor(), std::move(eventStr));
 
