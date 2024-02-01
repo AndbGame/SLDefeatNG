@@ -34,6 +34,10 @@ namespace {
     void OnSKSEMessageReceived(SKSE::MessagingInterface::Message* a_msg) {
         if (a_msg != nullptr) {
             switch (a_msg->type) {
+                case SKSE::MessagingInterface::kInputLoaded:
+                    SKSE::log::trace("kInputLoaded");
+                    SexLabDefeat::installInputEventSink(defeatManager);
+                    break;
                 case SKSE::MessagingInterface::kDataLoaded:
                     SKSE::log::trace("kDataLoaded");
                     defeatConfig->Setup(defeatManager);

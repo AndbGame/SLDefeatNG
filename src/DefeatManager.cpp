@@ -144,6 +144,7 @@ namespace SexLabDefeat {
             SKSE::log::error("initializeForms : Not found <" #TYPE " - " #ID "> '" #NAME "' in '" PLUGIN "'"); \
         }
 
+        LOAD_FORM(Forms.DefeatPlayerQST, RE::TESQuest, 0x000D62, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatMCMQst, RE::TESQuest, 0x06D3D4, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatRessourcesQst, RE::TESQuest, 0x04B8D1, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatPlayerQTE, RE::TESQuest, 0x0B5F7C, "SexLabDefeat.esp");
@@ -152,7 +153,6 @@ namespace SexLabDefeat {
 
         LOAD_FORM(Forms.SatisfiedSPL, RE::SpellItem, 0x0D6FF0, "SexLabDefeat.esp");
 
-        LOAD_FORM(Forms.MiscQuests.PlayerQST, RE::TESQuest, 0x000D62, "SexLabDefeat.esp");
         LOAD_FORM(Forms.MiscQuests.PAQst, RE::TESQuest, 0x0BD631, "SexLabDefeat.esp");
         LOAD_FORM(Forms.MiscQuests.PlayerActionQst, RE::TESQuest, 0x036014, "SexLabDefeat.esp");
         LOAD_FORM(Forms.MiscQuests.NPCsQst, RE::TESQuest, 0x06E968, "SexLabDefeat.esp");

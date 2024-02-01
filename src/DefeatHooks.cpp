@@ -69,8 +69,35 @@ namespace EventSync {
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {
 
-            //SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
-            //                 a_event->equipped, a_event->baseObject);
+            SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
+                             a_event->equipped, a_event->baseObject);
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    };
+
+    class OnInputEventHandler : public RE::BSTEventSink<RE::InputEvent*> {
+    public:
+        OnInputEventHandler(SexLabDefeat::IDefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        ~OnInputEventHandler() = default;
+        SexLabDefeat::IDefeatManager* _defeatManager;
+
+        virtual RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event,
+                                                      RE::BSTEventSource<RE::InputEvent*>* a_eventSource) {
+            if (!a_event) {
+                return RE::BSEventNotifyControl::kContinue;
+            }
+
+            for (auto* event = *a_event; event; event = event->next) {
+                if (event->eventType != RE::INPUT_EVENT_TYPE::kButton) {
+                    return RE::BSEventNotifyControl::kContinue;
+                }
+
+                const auto* button = event->AsButtonEvent();
+
+                if (button->IsUp()) {
+                    SKSE::log::trace("OnInputEventHandler, {}", button->GetIDCode());
+                }
+            }
             return RE::BSEventNotifyControl::kContinue;
         }
     };
@@ -87,9 +114,20 @@ void SexLabDefeat::installEventSink(SexLabDefeat::DefeatManager* defeatManager) 
     if (scriptEventSource) {
         scriptEventSource->AddEventSink(new EventSync::OnTESCombatEventHandler(defeatManager));
         scriptEventSource->AddEventSink(new EventSync::OnTESHitEventHandler(defeatManager));
-        scriptEventSource->AddEventSink(new EventSync::OnTESEquipEventHandler(defeatManager));
-        SKSE::log::info("Install EventSink post");
+        //scriptEventSource->AddEventSink(new EventSync::OnTESEquipEventHandler(defeatManager));
     } else {
         SKSE::log::critical("Install EventSink failed");
     }
+    SKSE::log::info("Install EventSink post");
+}
+
+void SexLabDefeat::installInputEventSink(SexLabDefeat::DefeatManager* defeatManager) {
+    SKSE::log::info("Install Input EventSink pre");
+    auto inputEvent = RE::BSInputDeviceManager::GetSingleton();
+    if (inputEvent) {
+        //inputEvent->AddEventSink(new EventSync::OnInputEventHandler(defeatManager));
+    } else {
+        SKSE::log::critical("Install Input EventSink failed");
+    }
+    SKSE::log::info("Install Input EventSink post");
 }

@@ -135,7 +135,11 @@ namespace SexLabDefeat {
                 [this] { return this->getLRGDefeatPlayerVulnerabilityScript(); }, "Vulnerability_Total"sv,
                 PapyrusInterface::ObjectVariableConfig(true, false)));
         }
+        IsSurrenderVar = PapyrusInterface::BoolVarPtr(new PapyrusInterface::BoolVar([this] { return this->getDefeatPlayerScript(); }, "IsSurrender"sv,
+            PapyrusInterface::ObjectVariableConfig(false, false)));
     }
+
+    bool DefeatPlayerActorImpl::isSurrender() { return IsSurrenderVar->get(); }
 
     float DefeatPlayerActorImpl::getVulnerability() {
         if (!getActorManager()->getSoftDependency().LRGPatch) {
@@ -144,17 +148,38 @@ namespace SexLabDefeat {
         return LRGVulnerabilityVar->get();
     }
 
+    PapyrusInterface::ObjectPtr DefeatPlayerActorImpl::getDefeatPlayerScript() {
+        if (getActorManager()->getForms().DefeatPlayerQST == nullptr ||
+            getActorManager()->getForms().DefeatPlayerQST->aliases.size() == 0) {
+            return nullptr;
+        }
+        const auto alias0 = getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases[0];
+        if (alias0 == nullptr) {
+            return nullptr;
+        }
+        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias0);
+        if (refAlias == nullptr) {
+            return nullptr;
+        }
+        auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        auto policy = vm->GetObjectHandlePolicy();
+        auto handle = policy->GetHandleForObject(refAlias->GetVMTypeID(), refAlias);
+        PapyrusInterface::ObjectPtr object = nullptr;
+        vm->FindBoundObject(handle, "defeatplayer", object);
+        return object;
+    }
+
     PapyrusInterface::ObjectPtr DefeatPlayerActorImpl::getLRGDefeatPlayerVulnerabilityScript() {
         if (!getActorManager()->getSoftDependency().LRGPatch ||
             getActorManager()->getForms().LRGPatch.DefeatVulnerability == nullptr ||
             getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases.size() == 0) {
             return nullptr;
         }
-        const auto alias1 = getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases[0];
-        if (alias1 == nullptr) {
+        const auto alias0 = getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases[0];
+        if (alias0 == nullptr) {
             return nullptr;
         }
-        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias1);
+        const auto refAlias = skyrim_cast<RE::BGSRefAlias*>(alias0);
         if (refAlias == nullptr) {
             return nullptr;
         }

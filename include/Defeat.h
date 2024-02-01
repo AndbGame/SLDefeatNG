@@ -124,6 +124,7 @@ namespace SexLabDefeat {
      * DefeatForms
      ****************************************************************************************************/
     struct DefeatForms {
+        RE::TESQuest* DefeatPlayerQST = nullptr;
         RE::TESQuest* DefeatRessourcesQst = nullptr;
         RE::TESQuest* DefeatMCMQst = nullptr;
         RE::TESQuest* DefeatPlayerQTE = nullptr;
@@ -133,7 +134,6 @@ namespace SexLabDefeat {
         RE::SpellItem* SatisfiedSPL = nullptr;
 
         struct {
-            RE::TESQuest* PlayerQST = nullptr;
             RE::TESQuest* PAQst = nullptr;
             RE::TESQuest* PlayerActionQst = nullptr;
             RE::TESQuest* NPCsQst = nullptr;
@@ -299,7 +299,7 @@ namespace SexLabDefeat {
         bool isSame(IDefeatActor* actor) const { return actor->getTESFormId() == getTESFormId(); };
 
         virtual bool isPlayer() { return false; };
-        bool isSurrender() const { return _data.isSurrender; }
+        virtual bool isSurrender() { return _data.isSurrender; }
 
         bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
         virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
@@ -429,6 +429,7 @@ namespace SexLabDefeat {
         DefeatPlayerActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl)
             : DefeatActor(data, actor, impl){};
         bool isPlayer() override { return true; };
+        bool isSurrender() override { return _impl->isSurrender(); };
         float getVulnerability() override;
     };
         

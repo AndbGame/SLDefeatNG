@@ -147,9 +147,11 @@ namespace SexLabDefeat {
     class DefeatPlayerActorImpl : public DefeatActorImpl {
     public:
         PapyrusInterface::FloatVarPtr LRGVulnerabilityVar;
+        PapyrusInterface::BoolVarPtr IsSurrenderVar;
 
         DefeatPlayerActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager);
         bool isPlayer() override { return true; };
+        bool isSurrender() override;
         bool isSheduledDeplateDynamicDefeat() override {
             UniqueSpinLock lock(*this);
             return _isSheduledDeplateDynamicDefeat;
@@ -169,6 +171,7 @@ namespace SexLabDefeat {
         float getVulnerability() override;
 
     protected:
+        PapyrusInterface::ObjectPtr getDefeatPlayerScript();
         PapyrusInterface::ObjectPtr getLRGDefeatPlayerVulnerabilityScript();
         std::atomic<bool> _isSheduledDeplateDynamicDefeat = false;
     };
