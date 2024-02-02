@@ -157,10 +157,10 @@ namespace SexLabDefeat {
             (health >= mcmConfig->Config.ThresholdPvicMin->get())) {
             SKSE::log::trace("KDWayExhaustion - Health {}% ", static_cast<int>(health));
 
-            HitResult result = HitResult::KNONKDOWN;
+            HitResult result = HitResult::KNOCKDOWN;
             if (randomChanse(mcmConfig->Config.KnockOutHPvic->get()) &&
                 !event.target->isTied()) {
-                result = HitResult::KNONKOUT;
+                result = HitResult::KNOCKOUT;
             } else {
                 if (mcmConfig->Config.bResistQTE->get() &&
                     randomChanse(mcmConfig->Config.SStruggleHealthPvic->get())) {
@@ -187,10 +187,10 @@ namespace SexLabDefeat {
                 (stamina <= mcmConfig->Config.ExhaustionPvic->get())) {
                 SKSE::log::trace("KDWayExhaustion - Stamina {}% ", static_cast<int>(stamina));
 
-                HitResult result = HitResult::KNONKDOWN;
+                HitResult result = HitResult::KNOCKDOWN;
                 if (randomChanse(mcmConfig->Config.KnockOutSPvic->get()) &&
                     !event.target->isTied()) {
-                    result = HitResult::KNONKOUT;
+                    result = HitResult::KNOCKOUT;
                 } else {
                     if (mcmConfig->Config.bResistQTE->get() &&
                         randomChanse(mcmConfig->Config.SStruggleExhaustionPvic->get())) {
@@ -220,7 +220,7 @@ namespace SexLabDefeat {
                 HitResult result = HitResult::SKIP;
                 if (randomChanse(mcmConfig->Config.LRGPatch.KnockOutVulnerabilityPvic->get()) &&
                     !event.target->isTied()) {
-                    result = HitResult::KNONKOUT;
+                    result = HitResult::KNOCKOUT;
                 } else {
                     auto form = _defeatActorManager->getEquippedHitSourceByFormID(event.aggressor, event.source);
                     if (form != nullptr) {
@@ -261,10 +261,10 @@ namespace SexLabDefeat {
             }
             event.target->resetDynamicDefeat();
 
-            HitResult result = HitResult::KNONKDOWN;
+            HitResult result = HitResult::KNOCKDOWN;
             if (randomChanse(mcmConfig->Config.LRGPatch.KnockOutDynamicPvic->get()) &&
                 !event.target->isTied()) {
-                result = HitResult::KNONKOUT;
+                result = HitResult::KNOCKOUT;
             } else {
                 if (mcmConfig->Config.bResistQTE->get() &&
                     randomChanse(mcmConfig->Config.LRGPatch.SStruggleDynamicPvic->get())) {
@@ -484,7 +484,7 @@ namespace SexLabDefeat {
                 HitResult result = HitResult::SKIP;
                 if (randomChanse(mcmConfig->Config.KnockOutPPvic->get()) &&
                     !event.target->isTied()) {
-                    result = HitResult::KNONKOUT;
+                    result = HitResult::KNOCKOUT;
                 } else {
                     if (mcmConfig->Config.bResistQTE->get() &&
                         randomChanse(mcmConfig->Config.SStrugglePowerPvic->get())) {

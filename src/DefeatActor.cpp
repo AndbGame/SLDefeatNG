@@ -153,7 +153,7 @@ namespace SexLabDefeat {
             getActorManager()->getForms().DefeatPlayerQST->aliases.size() == 0) {
             return nullptr;
         }
-        const auto alias0 = getActorManager()->getForms().LRGPatch.DefeatVulnerability->aliases[0];
+        const auto alias0 = getActorManager()->getForms().DefeatPlayerQST->aliases[0];
         if (alias0 == nullptr) {
             return nullptr;
         }

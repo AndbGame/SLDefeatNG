@@ -195,9 +195,9 @@ namespace SexLabDefeat {
             const auto handle = vm->handlePolicy.GetHandleForObject(static_cast<RE::VMTypeID>(RE::FormType::Reference),
                                                                     target->getTESActor());
             if (handle && handle != vm->handlePolicy.EmptyHandle()) {
-                RE::BSFixedString eventStr = "KNONKDOWN";
-                if (event == HitResult::KNONKOUT) {
-                    eventStr = "KNONKOUT";
+                RE::BSFixedString eventStr = "KNOCKDOWN";
+                if (event == HitResult::KNOCKOUT) {
+                    eventStr = "KNOCKOUT";
                 } else if (event == HitResult::STANDING_STRUGGLE) {
                     eventStr = "STANDING_STRUGGLE";
                 }

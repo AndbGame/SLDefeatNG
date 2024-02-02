@@ -78,7 +78,7 @@ namespace SexLabDefeat {
         float DFWVulnerability = 0;
         bool ignoreActorOnHit = true;
         int sexLabGender = -1;
-        int sexLabSexuality = -1;
+        int sexLabSexuality = -1; 
         bool sexLabAllowed = false;
         std::string sexLabRaceKey = "";
     };
@@ -86,7 +86,7 @@ namespace SexLabDefeat {
     using HitSource = RE::FormID;
     using HitProjectile = RE::FormID;
 
-    enum HitResult { SKIP, KNONKOUT, STANDING_STRUGGLE, KNONKDOWN };
+    enum HitResult { SKIP, KNOCKOUT, STANDING_STRUGGLE, KNOCKDOWN };
 
     struct RawHitEvent {
         RE::TESObjectREFR* target;
