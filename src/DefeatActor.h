@@ -47,25 +47,27 @@ namespace SexLabDefeat {
             _data.lastHitAggressor = lastHitAggressor->getTESFormId();
         }
 
-        void incrementDynamicDefeat(float val) override {
+        float incrementDynamicDefeat(float val) override {
             UniqueSpinLock lock(*this);
             _data.dynamicDefeat += val;
             if (_data.dynamicDefeat > 1) {
                 _data.dynamicDefeat = 1;
             }
+            return _data.dynamicDefeat;
         }
 
-        void decrementDynamicDefeat(float val) override {
+        float decrementDynamicDefeat(float val) override {
             UniqueSpinLock lock(*this);
             _data.dynamicDefeat -= val;
             if (_data.dynamicDefeat < 0) {
                 _data.dynamicDefeat = 0;
             }
+            return _data.dynamicDefeat;
         }
 
-        void resetDynamicDefeat() override {
+        float resetDynamicDefeat() override {
             UniqueSpinLock lock(*this);
-            _data.dynamicDefeat = 0;
+            return _data.dynamicDefeat = 0;
         }
 
         void setState(DefeatActorStates state) override {

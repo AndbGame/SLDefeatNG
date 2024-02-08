@@ -311,9 +311,9 @@ namespace SexLabDefeat {
         virtual void setState(DefeatActorStates state) = 0;
 
         float getDynamicDefeat() const { return _data.dynamicDefeat; }
-        virtual void incrementDynamicDefeat(float val) = 0;
-        virtual void decrementDynamicDefeat(float val) = 0;
-        virtual void resetDynamicDefeat() = 0;
+        virtual float incrementDynamicDefeat(float val) = 0;
+        virtual float decrementDynamicDefeat(float val) = 0;
+        virtual float resetDynamicDefeat() = 0;
 
         virtual float getVulnerability() { return _data.vulnerability; }
         virtual void setVulnerability(float vulnerability) = 0;
@@ -386,9 +386,15 @@ namespace SexLabDefeat {
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             _impl->setLastHitAggressor(lastHitAggressor);
         }
-        void incrementDynamicDefeat(float val) override { _impl->incrementDynamicDefeat(val); }
-        void decrementDynamicDefeat(float val) override { _impl->decrementDynamicDefeat(val); }
-        void resetDynamicDefeat() override { _impl->resetDynamicDefeat(); }
+        float incrementDynamicDefeat(float val) override {
+            return _data.dynamicDefeat = _impl->incrementDynamicDefeat(val); 
+        }
+        float decrementDynamicDefeat(float val) override {
+            return _data.dynamicDefeat = _impl->decrementDynamicDefeat(val);
+        }
+        float resetDynamicDefeat() override { 
+            return _data.dynamicDefeat = _impl->resetDynamicDefeat(); 
+        }
         void setState(DefeatActorStates state) override { _impl->setState(state); };
         void setVulnerability(float vulnerability) override { _impl->setVulnerability(vulnerability); };
         void setDFWVulnerability(float vulnerability) override { _impl->setDFWVulnerability(vulnerability); };
