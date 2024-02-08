@@ -153,6 +153,7 @@ namespace SexLabDefeat {
 
         struct {
             RE::TESQuest* DefeatVulnerability = nullptr;
+            RE::BGSListForm* DynDefIgnoredWeaponList = nullptr;
         } LRGPatch;
 
         struct {

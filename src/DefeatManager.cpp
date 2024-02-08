@@ -169,6 +169,7 @@ namespace SexLabDefeat {
 
         if (SoftDependency.LRGPatch) {
             LOAD_FORM(Forms.LRGPatch.DefeatVulnerability, RE::TESQuest, 0x000800, "SexLabDefeat_LRG_Patch.esp");
+            LOAD_FORM(Forms.LRGPatch.DynDefIgnoredWeaponList, RE::BGSListForm, 0x000808, "SexLabDefeat_LRG_Patch.esp");
         }
 
 #undef LOAD_FORM

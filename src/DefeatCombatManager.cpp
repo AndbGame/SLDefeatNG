@@ -108,6 +108,14 @@ namespace SexLabDefeat {
             return HitResult::SKIP;
         }
 
+        if (_defeatManager->SoftDependency.LRGPatch &&
+            _defeatManager->Forms.LRGPatch.DynDefIgnoredWeaponList != nullptr &&
+            _defeatManager->Forms.LRGPatch.DynDefIgnoredWeaponList->HasForm(event.source)) {
+
+            SKSE::log::trace("KDWay - DynDef Ignored Weapon List");
+            return HitResult::SKIP;
+        }
+
         auto mcmConfig = _defeatManager->getConfig();
         auto result = HitResult::SKIP;
 
