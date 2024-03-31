@@ -216,6 +216,8 @@ namespace SexLabDefeat {
 
             PapyrusInterface::BoolVarPtr bResistQTE;
 
+            PapyrusInterface::BoolVarPtr OnOffPlayerVictim;
+
             struct {
                 PapyrusInterface::BoolVarPtr DeviousFrameworkON;
                 PapyrusInterface::BoolVarPtr KDWayVulnerabilityUseDFW;

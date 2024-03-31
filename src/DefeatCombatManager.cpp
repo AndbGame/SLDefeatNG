@@ -27,6 +27,10 @@ namespace SexLabDefeat {
 
     void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType targetActor) {
         SKSE::log::trace("onPlayerHitHandler");
+        if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
+            SKSE::log::trace("PlayerVictim disabled - skipped");
+            return;
+        }
         if (targetActor->hasHitImmunity()) {
             SKSE::log::trace("onPlayerHitHandler Hit Immunity - skipped");
             return;

@@ -23,3 +23,14 @@ Experimental 4
 
 - Bugfixes
 - Some refactoring
+
+Experimental 5
+
+- lrg 1.6.2
+
+Experimental 6
+
+- lrg 1.6.3
+- Fix dynamic widget desync
+- Disable onHit processing if PlayerVictim disabled
+- RelWithDebInfo build

@@ -50,7 +50,7 @@
       "name": "release-ae",
       "inherits": [ "base", "ae" ],
       "displayName": "Release AE",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
     }
   ]
 }
