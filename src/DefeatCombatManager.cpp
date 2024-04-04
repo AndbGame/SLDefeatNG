@@ -12,7 +12,10 @@ namespace SexLabDefeat {
 
     void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* target_actor) {
         auto defActor = _defeatActorManager->getDefeatActor(target_actor);
-        defActor->requestExtraData(target_actor, [&] {}, 10s);
+        if (!defActor->isIgnored()) {
+            defActor->requestExtraData(
+                target_actor, [&] {}, 10s);
+        }
     }
 
     void DefeatCombatManager::onHitHandler(RawHitEvent event) {
@@ -49,6 +52,11 @@ namespace SexLabDefeat {
             _defeatActorManager->validPlayerForVictimRole(target_actor)) {
 
             auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
+            if (aggrActor->isIgnored()) {
+                SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Ignore Conditions",
+                                 event.aggressor->GetFormID(), event.aggressor->GetName());
+                return;
+            }
             targetActor->setLastHitAggressor(aggrActor);
 
             if (targetActor->registerAndCheckHitGuard(aggrActor, event.source, event.projectile)) {

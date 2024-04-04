@@ -24,6 +24,7 @@ namespace SexLabDefeat {
         std::shared_ptr<DefeatActorImpl> getDefeatActorImpl(RE::Actor* actor);
         DefeatActorType getDefeatActor(RE::Actor* actor) override;
 
+        bool isIgnored(RE::Actor* actor) override;
         bool validPlayerForVictimRole(RE::Actor* actor) override;
         bool hasSexInterestByAggressor(DefeatActorType target, DefeatActorType aggressor) override;
         bool hasSexCombinationWithAggressor(DefeatActorType target, DefeatActorType aggressor) override;

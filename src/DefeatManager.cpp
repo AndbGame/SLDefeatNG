@@ -132,6 +132,10 @@ namespace SexLabDefeat {
                 SKSE::log::info("LRGPatch feature enabled");
                 SoftDependency.LRGPatch = true;
             };
+            if (!SoftDependency.BaboDialogue && it->GetFilename() == "BaboInteractiveDia.esp") {
+                SKSE::log::info("BaboDialogue feature enabled");
+                SoftDependency.BaboDialogue = true;
+            };
         };
     }
 
@@ -170,6 +174,14 @@ namespace SexLabDefeat {
         if (SoftDependency.LRGPatch) {
             LOAD_FORM(Forms.LRGPatch.DefeatVulnerability, RE::TESQuest, 0x000800, "SexLabDefeat_LRG_Patch.esp");
             LOAD_FORM(Forms.LRGPatch.DynDefIgnoredWeaponList, RE::BGSListForm, 0x000808, "SexLabDefeat_LRG_Patch.esp");
+        }
+
+        if (SoftDependency.BaboDialogue) {
+            RE::TESFaction* baboFaction;
+            LOAD_FORM(baboFaction, RE::TESFaction, 0xD58522, "BaboInteractiveDia.esp");
+            if (baboFaction != nullptr) {
+                Forms.Ignore.Factions.push_back(baboFaction);
+            }
         }
 
 #undef LOAD_FORM

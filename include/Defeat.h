@@ -117,6 +117,7 @@ namespace SexLabDefeat {
     struct SoftDependencyType {
         bool ZaZ = false;
         bool DeviousFramework = false;
+        bool BaboDialogue = false;
         bool LRGPatch = false;
     };
 
@@ -158,6 +159,10 @@ namespace SexLabDefeat {
 
         struct {
         } Keywords;
+
+        struct {
+            std::list<RE::TESFaction*> Factions;
+        } Ignore;
     };
 
     /***************************************************************************************************
@@ -301,6 +306,8 @@ namespace SexLabDefeat {
 
         bool isSame(IDefeatActor* actor) const { return actor->getTESFormId() == getTESFormId(); };
 
+        virtual bool isIgnored() { return false; };
+
         virtual bool isPlayer() { return false; };
         virtual bool isSurrender() { return _data.isSurrender; }
 
@@ -385,6 +392,8 @@ namespace SexLabDefeat {
         bool isDefeatAllowed2PC();
         bool isDefeatAllowed2NvN();
 
+        bool isIgnored() override;
+
         void setHitImmunityFor(std::chrono::milliseconds ms) override { _impl->setHitImmunityFor(ms); };
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             _impl->setLastHitAggressor(lastHitAggressor);
@@ -451,6 +460,7 @@ namespace SexLabDefeat {
         virtual DefeatActorType getDefeatActor(RE::Actor* actor) = 0;
 
         /* Pre Checks functions */
+        virtual bool isIgnored(RE::Actor* actor) { return false; };
         virtual bool validForAggressorRole(RE::Actor* actor);
         virtual bool validForAggressorRoleOverPlayer(RE::Actor* actor);
         virtual bool validPlayerForVictimRole(RE::Actor* actor) = 0;

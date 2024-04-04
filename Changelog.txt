@@ -34,3 +34,7 @@ Experimental 6
 - Fix dynamic widget desync
 - Disable onHit processing if PlayerVictim disabled
 - RelWithDebInfo build
+
+Experimental 7
+
+- Exclude BaboDialogueFaction (soft dependency BaboDialogue)

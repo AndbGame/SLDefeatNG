@@ -75,6 +75,10 @@ namespace SexLabDefeat {
         return ret;
     }
 
+    bool DefeatActor::isIgnored() { 
+        return _impl->getActorManager()->isIgnored(_actor);
+    }
+
 
     float DefeatPlayerActor::getVulnerability() {
         if (!_impl->getActorManager()->getSoftDependency().LRGPatch) {

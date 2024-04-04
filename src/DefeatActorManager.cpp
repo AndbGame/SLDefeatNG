@@ -213,6 +213,15 @@ namespace SexLabDefeat {
         }
     }
 
+    bool DefeatActorManager::isIgnored(RE::Actor* actor) {
+        for (RE::TESFaction* faction : _defeatManager->Forms.Ignore.Factions) {
+            if (actor->IsInFaction(faction)) {
+                return true;
+            }
+        };
+        return false;
+    }
+
     bool IDefeatActorManager::validForAggressorRole(RE::Actor* actor) {
         if (actor == nullptr || actor->IsGhost()) {
             return false;
