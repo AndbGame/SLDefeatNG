@@ -118,8 +118,9 @@ namespace SexLabDefeat {
             _data.extraDataExpiration = clock::now() + ms;
         }
 
-        void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
-            extradataQueue->functionCall(TesActor, callback, timeoutMs);
+        void requestExtraData(DefeatActorType actor, std::function<void()> callback,
+                              milliseconds timeoutMs) override {
+            extradataQueue->functionCall(actor->getTESActor(), callback, timeoutMs);
         }
         void setExtraData(ActorExtraData data) override {
             UniqueSpinLock lock(*this);

@@ -14,76 +14,106 @@ namespace SexLabDefeat {
         auto defActor = _defeatActorManager->getDefeatActor(target_actor);
         if (!defActor->isIgnored()) {
             defActor->requestExtraData(
-                target_actor, [&] {}, 10s);
+                defActor, [&] {}, 10s);
         }
     }
 
     void DefeatCombatManager::onHitHandler(RawHitEvent event) {
-        auto target_actor = event.target->As<RE::Actor>();
-        if (target_actor != nullptr) {
-            auto player = _defeatActorManager->getPlayer(target_actor);
-            if (player->isSame(target_actor)) {
-                onPlayerHitHandler(event, player);
-            }
-        }
-    }
-
-    void DefeatCombatManager::onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType targetActor) {
-        SKSE::log::trace("onPlayerHitHandler");
-        if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
-            SKSE::log::trace("PlayerVictim disabled - skipped");
-            return;
-        }
-        if (targetActor->hasHitImmunity()) {
-            SKSE::log::trace("onPlayerHitHandler Hit Immunity - skipped");
-            return;
-        }
-        if (targetActor->getState() != DefeatActorStates::ACTIVE) {
-            return;
-        }
-        if (event.aggressor == nullptr) {
+        if (event.target == nullptr || event.aggressor == nullptr) {
             return;
         }
 
         auto aggr_actor = event.aggressor->As<RE::Actor>();
         auto target_actor = event.target->As<RE::Actor>();
 
-        if (aggr_actor && _defeatActorManager->validForAggressorRole(aggr_actor) &&
-            _defeatActorManager->validPlayerForVictimRole(target_actor)) {
+        if (!_defeatActorManager->validForAggressorRole(aggr_actor) ||
+            !_defeatActorManager->validForVictrimRole(target_actor)) {
+            return;
+        }
 
-            auto aggrActor = _defeatActorManager->getDefeatActor(aggr_actor);
-            if (aggrActor->isIgnored()) {
-                SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Ignore Conditions",
-                                 event.aggressor->GetFormID(), event.aggressor->GetName());
+        auto player = _defeatActorManager->getPlayer(target_actor);
+
+        auto isPlayerTarget = player->isSame(target_actor);
+        DefeatActorType target = nullptr;
+        DefeatActorType source = nullptr;
+
+        if (isPlayerTarget) {
+            // npc -> player
+            if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
+                SKSE::log::trace("onHitHandler PlayerVictim disabled - skipped");
                 return;
             }
-            targetActor->setLastHitAggressor(aggrActor);
-
-            if (targetActor->registerAndCheckHitGuard(aggrActor, event.source, event.projectile)) {
-                SKSE::log::trace("onPlayerHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
-                                    event.aggressor->GetFormID(), event.aggressor->GetName());
+            if (!_defeatActorManager->validPlayerForVictimRole(target_actor)) {
+                SKSE::log::trace("onHitHandler PlayerVictim not valid Player for victim role - skipped");
                 return;
             }
+            target = player;
+        } else {
+            if (!isPlayerTarget) {
+                // npc -> npc
+                if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
+                    SKSE::log::trace("onHitHandler NvN disabled - skipped");
+                    return;
+                }
+                target = _defeatActorManager->getDefeatActor(aggr_actor);
+            } else {
+                // player -> npc
+                return;
+            }
+        }
 
-            auto hitEvent = createHitEvent(targetActor, aggrActor, event);
-            auto target_actor_handle = target_actor->GetHandle();
-            auto aggr_actor_handle = aggr_actor->GetHandle();
+        if (target->hasHitImmunity()) {
+            SKSE::log::trace("onHitHandler Hit Immunity - skipped");
+            return;
+        }
 
-            targetActor->requestExtraData(
-                target_actor, [&] {}, 10s);
-            aggrActor->requestExtraData(
-                aggr_actor, [&] {}, 10s);
+        if (target->getState() != DefeatActorStates::ACTIVE) {
+            SKSE::log::trace("onHitHandler target not in Active state - skipped");
+            return;
+        }
 
-            this->calculatePlayerHit(hitEvent);
+        source = _defeatActorManager->getDefeatActor(aggr_actor);
+        if (source->isIgnored()) {
+            SKSE::log::trace("onHitHandler Hit from <{:08X}:{}> rejected by Ignore Conditions",
+                             event.aggressor->GetFormID(), event.aggressor->GetName());
+            return;
+        }
+        target->setLastHitAggressor(source);
+
+        if (target->registerAndCheckHitGuard(source, event.source, event.projectile)) {
+            SKSE::log::trace("onHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
+                             event.aggressor->GetFormID(), event.aggressor->GetName());
+            return;
+        }
+
+        auto hitEvent = createHitEvent(target, source, event);
+
+        if (isPlayerTarget) {
+            onPlayerHitHandler(hitEvent, player, source);
+        } else {
+            onNvNHitHandler(hitEvent, target, source);
         }
     }
+
+    void DefeatCombatManager::onPlayerHitHandler(HitEvent event, DefeatPlayerActorType targetActor,
+                                                 DefeatActorType sourceActor) {
+        SKSE::log::trace("onPlayerHitHandler");
+
+        targetActor->requestExtraData(
+            targetActor, [&] {}, 10s);
+        sourceActor->requestExtraData(
+            sourceActor, [&] {}, 10s);
+
+        this->calculatePlayerHit(event);
+    }
+
+    void DefeatCombatManager::onNvNHitHandler(HitEvent event, DefeatActorType defActor,
+                                              DefeatActorType source) {}
 
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
         SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),
                          event.aggressor->getTESFormId());
-        if (event.target == nullptr || event.aggressor == nullptr) {
-            return;
-        }
+
         if (_defeatActorManager->checkAggressor(event.target, event.aggressor)) {
             auto result = KDWay(event);
             if (result != HitResult::SKIP) {

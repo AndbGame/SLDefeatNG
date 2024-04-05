@@ -41,6 +41,7 @@ namespace SexLabDefeat {
         IDefeatActorManager* _defeatActorManager;
         IDefeatManager* _defeatManager;
 
-        void onPlayerHitHandler(RawHitEvent event, DefeatPlayerActorType defActor);
+        void onPlayerHitHandler(HitEvent event, DefeatPlayerActorType defActor, DefeatActorType source);
+        void onNvNHitHandler(HitEvent event, DefeatActorType defActor, DefeatActorType source);
     };
 }

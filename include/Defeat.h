@@ -222,6 +222,7 @@ namespace SexLabDefeat {
             PapyrusInterface::BoolVarPtr bResistQTE;
 
             PapyrusInterface::BoolVarPtr OnOffPlayerVictim;
+            PapyrusInterface::BoolVarPtr OnOffNVN;
 
             struct {
                 PapyrusInterface::BoolVarPtr DeviousFrameworkON;
@@ -328,7 +329,8 @@ namespace SexLabDefeat {
         virtual float getVulnerability() { return _data.vulnerability; }
         virtual void setVulnerability(float vulnerability) = 0;
 
-        virtual void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) = 0;
+        virtual void requestExtraData(DefeatActorType actor, std::function<void()> callback,
+                                      milliseconds timeoutMs) = 0;
         virtual void setExtraData(ActorExtraData data) = 0;
         bool isExtraDataExpired() const { return clock::now() > _data.extraDataExpiration; }
         virtual void setExtraDataExpirationFor(std::chrono::milliseconds ms) = 0;
@@ -376,6 +378,7 @@ namespace SexLabDefeat {
     class DefeatActor : public IDefeatActor {
         friend class DefeatActorManager;
         friend class IDefeatActorManager;
+        friend class DefeatActorImpl;
 
     public:
         DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl);
@@ -416,8 +419,9 @@ namespace SexLabDefeat {
         void setSexLabAllowed(bool val) override { _impl->setSexLabAllowed(val); }
         void setSexLabRaceKey(std::string val) override { _impl->setSexLabRaceKey(val); }
         void setExtraDataExpirationFor(std::chrono::milliseconds ms) override { _impl->setExtraDataExpirationFor(ms); }
-        void requestExtraData(RE::Actor* TesActor, std::function<void()> callback, milliseconds timeoutMs) override {
-            _impl->requestExtraData(TesActor, callback, timeoutMs);
+        void requestExtraData(DefeatActorType actor, std::function<void()> callback,
+                              milliseconds timeoutMs) override {
+            _impl->requestExtraData(actor, callback, timeoutMs);
         }
         void setExtraData(ActorExtraData data) override { _impl->setExtraData(data); }
         bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override {
@@ -462,7 +466,7 @@ namespace SexLabDefeat {
         /* Pre Checks functions */
         virtual bool isIgnored(RE::Actor* actor) { return false; };
         virtual bool validForAggressorRole(RE::Actor* actor);
-        virtual bool validForAggressorRoleOverPlayer(RE::Actor* actor);
+        virtual bool validForVictrimRole(RE::Actor* actor);
         virtual bool validPlayerForVictimRole(RE::Actor* actor) = 0;
         /* / Pre Checks functions  */
 

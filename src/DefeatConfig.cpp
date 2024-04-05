@@ -83,6 +83,7 @@ namespace SexLabDefeat {
         BOOL_PROPERTY(bResistQTE);
 
         BOOL_PROPERTY_RESS(OnOffPlayerVictim);
+        BOOL_PROPERTY_RESS(OnOffNVN);
 
 #undef BOOL_PROPERTY
 #undef BOOL_PROPERTY_RESS

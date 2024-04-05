@@ -229,7 +229,7 @@ namespace SexLabDefeat {
         return true;
     }
 
-    bool IDefeatActorManager::validForAggressorRoleOverPlayer(RE::Actor* actor) {
+    bool IDefeatActorManager::validForVictrimRole(RE::Actor* actor) {
         if (actor == nullptr || actor->IsGhost()) {
             return false;
         }
