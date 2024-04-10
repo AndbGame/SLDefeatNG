@@ -119,6 +119,12 @@ namespace SexLabDefeat {
             SKSE::log::trace("onNvNHitHandler - KD Not Allowed");
             return;
         }
+        if (_defeatActorManager->hasKeywordString(source, _defeatManager->Forms.KeywordId.DefeatActive) &&
+            !_defeatActorManager->hasKeywordString(source, _defeatManager->Forms.KeywordId.DefeatAggPlayer)) {
+            SKSE::log::trace("onNvNHitHandler - Aggressor is DefeatActive and not DefeatAggPlayer");
+            return;
+
+        }
         if (_defeatActorManager->getDistanceBetween(event.target, event.aggressor) > mcmConfig->KD_FAR_MAX_DISTANCE) {
             SKSE::log::trace("onNvNHitHandler - Distance is too big");
             return;
@@ -129,6 +135,7 @@ namespace SexLabDefeat {
         }
 
         defActor->setLastHitAggressor(source);
+        HitResult result = HitResult::SKIP;
 
         if (defActor->isFollower()) {
             if (randomChanse(mcmConfig->Config.COHFollower->get())) {
@@ -136,6 +143,7 @@ namespace SexLabDefeat {
                     _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
                 if (health <= mcmConfig->Config.ThresholdFollower->get()) {
                     SKSE::log::trace("onNvNHitHandler Follower Knockdown");
+                    result = HitResult::KNOCKDOWN;
                 }
             }
         } else {
@@ -146,6 +154,7 @@ namespace SexLabDefeat {
                             _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
                         if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
                             SKSE::log::trace("onNvNHitHandler NPC Knockdown by Follower");
+                            result = HitResult::KNOCKDOWN;
                         }
                     }
                 }
@@ -155,9 +164,15 @@ namespace SexLabDefeat {
                         _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
                     if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
                         SKSE::log::trace("onNvNHitHandler NPC Knockdown by NPC");
+                        result = HitResult::KNOCKDOWN;
                     }
                 }
             }
+        }
+
+        if (result != HitResult::SKIP) {
+            defActor->setHitImmunityFor(10000ms);
+            _defeatActorManager->npcKnockDownEvent(event.target, event.aggressor, result);
         }
     }
 

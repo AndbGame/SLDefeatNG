@@ -25,7 +25,10 @@ namespace SexLabDefeat {
     std::shared_ptr<DefeatActorImpl> DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
         assert(actor != nullptr);
         auto formID = actor->GetFormID();
+        return getDefeatActorImpl(formID);
+    }
 
+    std::shared_ptr<DefeatActorImpl> DefeatActorManager::getDefeatActorImpl(RE::FormID formID) {
         SexLabDefeat::UniqueSpinLock lock(*this);
         auto val = _actorMap.find(formID);
         std::shared_ptr<DefeatActorImpl> defeatActorImpl;
@@ -211,6 +214,27 @@ namespace SexLabDefeat {
                     eventArgs, nullptr);
             }
         }
+    }
+
+    void DefeatActorManager::npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) {
+        PapyrusInterface::CallbackPtr callback(new PapyrusInterface::EmptyRequestCallback("npcKnockDownEvent"));
+
+        RE::BSFixedString eventStr = "KNOCKDOWN";
+        if (event == HitResult::KNOCKOUT) {
+            eventStr = "KNOCKOUT";
+        } else if (event == HitResult::STANDING_STRUGGLE) {
+            eventStr = "STANDING_STRUGGLE";
+        }
+
+        SKSE::log::trace("npcKnockDownEvent - {}: <{:08X}> from <{:08X}>", eventStr, target->getTESFormId(),
+                         aggressor->getTESFormId());
+
+        if (PapyrusInterface::DispatchStaticCall("defeat_skse_api", "npcKnockDownEvent", callback,
+                                                 target->getTESActor(), aggressor->getTESActor(),
+                                                 std::move(eventStr))) {
+            return;
+        }
+        SKSE::log::error("Failed to dispatch static call [defeat_skse_api::npcKnockDownEvent].");
     }
 
     bool DefeatActorManager::isIgnored(RE::Actor* actor) {

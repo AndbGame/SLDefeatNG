@@ -22,6 +22,7 @@ namespace SexLabDefeat {
         DefeatPlayerActorType getPlayer(RE::Actor* actor = nullptr) override;
 
         std::shared_ptr<DefeatActorImpl> getDefeatActorImpl(RE::Actor* actor);
+        std::shared_ptr<DefeatActorImpl> getDefeatActorImpl(RE::FormID formId);
         DefeatActorType getDefeatActor(RE::Actor* actor) override;
 
         bool isIgnored(RE::Actor* actor) override;
@@ -31,6 +32,7 @@ namespace SexLabDefeat {
         bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) override;
 
         void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) override;
+        void npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) override;
 
         DefeatConfig* getConfig() override;
         DefeatForms getForms() override;

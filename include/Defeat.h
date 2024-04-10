@@ -162,6 +162,7 @@ namespace SexLabDefeat {
 
         struct {
             std::string_view DefeatActive = "DefeatActive";
+            std::string_view DefeatAggPlayer = "DefeatAggPlayer";
 
             std::string_view SexLabActive = "SexLabActive";
             std::string_view ActorTypeNPC = "ActorTypeNPC";
@@ -496,6 +497,7 @@ namespace SexLabDefeat {
         virtual bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
 
         virtual void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) = 0;
+        virtual void npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) = 0;
 
         float getDistanceBetween(DefeatActorType source, DefeatActorType target);
         float getHeadingAngleBetween(DefeatActorType source, DefeatActorType target);

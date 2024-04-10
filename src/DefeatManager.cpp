@@ -39,6 +39,17 @@ namespace {
         _defeatManager->setActorState(actor, _state);
     }
 
+    inline RE::Actor* getLastHitAggressor(RE::Actor* actor) {
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
+        if (defeatActor) {
+            auto formId = defeatActor->getLastHitAggressorFormId();
+            if (formId) {
+                return RE::TESForm::LookupByID<RE::Actor>(formId);
+            }
+        }
+        return nullptr;
+    }
+
     bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
         const bool loc_unhook = _defeatManager->getConfig()->CFG_PAPYUNHOOK;
 
@@ -47,6 +58,7 @@ namespace {
 
         REGISTERPAPYRUSFUNC(responseActorExtraData, true)
         REGISTERPAPYRUSFUNC(setActorState, true)
+        REGISTERPAPYRUSFUNC(getLastHitAggressor, true)
 
 #undef REGISTERPAPYRUSFUNC
             return true;
