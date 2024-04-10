@@ -78,7 +78,6 @@ namespace SexLabDefeat {
                              event.aggressor->GetFormID(), event.aggressor->GetName());
             return;
         }
-        target->setLastHitAggressor(source);
 
         if (target->registerAndCheckHitGuard(source, event.source, event.projectile)) {
             SKSE::log::trace("onHitHandler Hit from <{:08X}:{}> rejected by Hit Spam Guard",
@@ -99,6 +98,8 @@ namespace SexLabDefeat {
                                                  DefeatActorType sourceActor) {
         SKSE::log::trace("onPlayerHitHandler");
 
+        targetActor->setLastHitAggressor(sourceActor);
+
         targetActor->requestExtraData(
             targetActor, [&] {}, 10s);
         sourceActor->requestExtraData(
@@ -107,8 +108,58 @@ namespace SexLabDefeat {
         this->calculatePlayerHit(event);
     }
 
-    void DefeatCombatManager::onNvNHitHandler(HitEvent event, DefeatActorType defActor,
-                                              DefeatActorType source) {}
+    void DefeatCombatManager::onNvNHitHandler(HitEvent event, DefeatActorType defActor, DefeatActorType source) {
+        auto mcmConfig = _defeatManager->getConfig();
+
+        if (_defeatActorManager->hasCombatTarget(source, defActor)) {
+            SKSE::log::trace("onNvNHitHandler - Not in target");
+            return;
+        }
+        if (!event.target->isKDAllowed()) {
+            SKSE::log::trace("onNvNHitHandler - KD Not Allowed");
+            return;
+        }
+        if (_defeatActorManager->getDistanceBetween(event.target, event.aggressor) > mcmConfig->KD_FAR_MAX_DISTANCE) {
+            SKSE::log::trace("onNvNHitHandler - Distance is too big");
+            return;
+        }
+        if (mcmConfig->Config.NVNKDtype->get() > 2) {
+            SKSE::log::trace("onNvNHitHandler - NVNKDtype disabled for HIT");
+            return;
+        }
+
+        defActor->setLastHitAggressor(source);
+
+        if (defActor->isFollower()) {
+            if (randomChanse(mcmConfig->Config.COHFollower->get())) {
+                const auto health =
+                    _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
+                if (health <= mcmConfig->Config.ThresholdFollower->get()) {
+                    SKSE::log::trace("onNvNHitHandler Follower Knockdown");
+                }
+            }
+        } else {
+            if (source->isFollower()) {
+                if (mcmConfig->Config.AllowCagg->get()) {
+                    if (randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
+                        const auto health =
+                            _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
+                        if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
+                            SKSE::log::trace("onNvNHitHandler NPC Knockdown by Follower");
+                        }
+                    }
+                }
+            } else {
+                if (randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
+                    const auto health =
+                        _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
+                    if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
+                        SKSE::log::trace("onNvNHitHandler NPC Knockdown by NPC");
+                    }
+                }
+            }
+        }
+    }
 
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
         SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),

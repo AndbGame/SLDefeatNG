@@ -9,7 +9,15 @@ namespace SexLabDefeat {
         _impl = impl;
     }
 
-    bool DefeatActor::isCreature() { return !_impl->getActorManager()->hasKeywordString(*this, "ActorTypeNPC"); }
+    bool DefeatActor::isCreature() {
+        return !_impl->getActorManager()->hasKeywordString(*this, _impl->getActorManager()->getForms().KeywordId.ActorTypeNPC);
+    }
+
+    bool DefeatActor::isFollower() {
+        return _impl->getActorManager()->isPlayerTeammate(*this) ||
+               _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.CurrentFollowerFaction) ||
+               _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.CurrentHireling);
+    }
 
     bool DefeatActor::isSatisfied() {
         return _impl->getActorManager()->hasSpell(*this, _impl->getActorManager()->getForms().SatisfiedSPL);
@@ -21,17 +29,22 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::isKDAllowed() {
-        if (_impl->getActorManager()->isInKillMove(*this) || isKDImmune() ||
-            _impl->getActorManager()->hasKeywordString(*this, "FavorBrawlEvent")) {
+        if (_impl->getActorManager()->isInKillMove(*this) || isKDImmune()) {
             //        SKSE::log::trace("isKDAllowed - false {} {} {}",
             //                         getActor()->IsInKillMove(), isKDImmune(),
             //                         actor->HasKeywordString("FavorBrawlEvent"));
             return false;
         }
-        if (_impl->getActorManager()->isQuestEnabled(
-                _impl->getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
-            SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
-            return false;
+        if (isPlayer()) {
+            if (_impl->getActorManager()->hasKeywordString(*this, "FavorBrawlEvent")) {
+                SKSE::log::trace("isKDAllowed - false FavorBrawlEvent");
+                return false;
+            }
+            if (_impl->getActorManager()->isQuestEnabled(
+                    _impl->getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
+                SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
+                return false;
+            }
         }
         return true;
     }

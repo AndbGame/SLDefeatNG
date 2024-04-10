@@ -29,6 +29,9 @@ namespace SexLabDefeat {
 
         using FloatVar = ObjectVariable<float>;
         using FloatVarPtr = std::unique_ptr<FloatVar>;
+
+        using IntVar = ObjectVariable<std::int32_t>;
+        using IntVarPtr = std::unique_ptr<IntVar>;
     }
 
     class IDefeatManager;
@@ -158,11 +161,20 @@ namespace SexLabDefeat {
         } LRGPatch;
 
         struct {
-        } Keywords;
+            std::string_view DefeatActive = "DefeatActive";
+
+            std::string_view SexLabActive = "SexLabActive";
+            std::string_view ActorTypeNPC = "ActorTypeNPC";
+        } KeywordId;
 
         struct {
             std::list<RE::TESFaction*> Factions;
         } Ignore;
+
+        struct {
+            RE::TESFaction* CurrentFollowerFaction;
+            RE::TESFaction* CurrentHireling;
+        } Faction;
     };
 
     /***************************************************************************************************
@@ -177,6 +189,7 @@ namespace SexLabDefeat {
             PapyrusInterface::FloatVarPtr PvicRaped;
             PapyrusInterface::FloatVarPtr NVNRapedFollower;
             PapyrusInterface::FloatVarPtr NVNRaped;
+            PapyrusInterface::IntVarPtr NVNKDtype;
             PapyrusInterface::BoolVarPtr EveryonePvic;
             PapyrusInterface::BoolVarPtr HuntCrea;
 
@@ -220,6 +233,13 @@ namespace SexLabDefeat {
             PapyrusInterface::FloatVarPtr SStrugglePowerPvic;
 
             PapyrusInterface::BoolVarPtr bResistQTE;
+
+            PapyrusInterface::BoolVarPtr EveryoneNVN;
+            PapyrusInterface::BoolVarPtr AllowCagg;
+            PapyrusInterface::FloatVarPtr ThresholdNPCvsNPC;
+            PapyrusInterface::FloatVarPtr ThresholdFollower;
+            PapyrusInterface::FloatVarPtr ChanceOnHitNPC;
+            PapyrusInterface::FloatVarPtr COHFollower;
 
             PapyrusInterface::BoolVarPtr OnOffPlayerVictim;
             PapyrusInterface::BoolVarPtr OnOffNVN;
@@ -385,8 +405,7 @@ namespace SexLabDefeat {
         ~DefeatActor() {}
 
         bool isCreature();
-        // TODO:
-        bool isFollower() { return false; }
+        bool isFollower();
         bool isSatisfied();
         bool isKDImmune();
         bool isKDAllowed();
@@ -484,8 +503,11 @@ namespace SexLabDefeat {
         RE::TESForm* getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource);
         bool wornHasAnyKeyword(DefeatActorType source, std::list<std::string> kwds);
         bool wornHasAnyKeyword(DefeatActor& source, std::list<std::string> kwds);
-        bool hasKeywordString(DefeatActorType source, std::string kwd);
-        bool hasKeywordString(DefeatActor& source, std::string kwd);
+        bool hasKeywordString(DefeatActorType source, std::string_view kwd);
+        bool hasKeywordString(DefeatActor& source, std::string_view kwd);
+        bool isInFaction(DefeatActorType actor, RE::TESFaction* faction);
+        bool isInFaction(DefeatActor& actor, RE::TESFaction* faction);
+        bool hasCombatTarget(DefeatActorType source, DefeatActorType target);
         bool notInFlyingState(DefeatActorType source);
         bool notInFlyingState(DefeatActor& source);
         bool hasSpell(DefeatActorType source, RE::SpellItem* spell);
@@ -496,6 +518,8 @@ namespace SexLabDefeat {
         bool isInKillMove(DefeatActor& source);
         bool isQuestEnabled(RE::TESQuest* quest);
         bool isInCombat(DefeatActorType source);
+        bool isPlayerTeammate(DefeatActorType source);
+        bool isPlayerTeammate(DefeatActor& source);
 
         virtual DefeatConfig* getConfig() = 0;
         virtual DefeatForms getForms() = 0;

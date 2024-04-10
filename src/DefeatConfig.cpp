@@ -34,6 +34,11 @@ namespace SexLabDefeat {
             [this] { return this->getDefeatMCMScript(); }, std::string_view(#NAME), \
                                        PapyrusInterface::ObjectVariableConfig(true, false)))
 
+#define INT_PROPERTY_RESS(NAME)                                                                                 \
+    Config.NAME = PapyrusInterface::IntVarPtr(                                                                  \
+        new PapyrusInterface::IntVar([this] { return this->getDefeatConfigScript(); }, std::string_view(#NAME), \
+                                      PapyrusInterface::ObjectVariableConfig(true, false)))
+
 
         
         FLOAT_PROPERTY(PvicRaped);
@@ -82,11 +87,20 @@ namespace SexLabDefeat {
 
         BOOL_PROPERTY(bResistQTE);
 
+        BOOL_PROPERTY(EveryoneNVN);
+        BOOL_PROPERTY(AllowCagg);
+        FLOAT_PROPERTY(ThresholdNPCvsNPC);
+        FLOAT_PROPERTY(ThresholdFollower);
+        FLOAT_PROPERTY(ChanceOnHitNPC);
+        FLOAT_PROPERTY(COHFollower);
+
         BOOL_PROPERTY_RESS(OnOffPlayerVictim);
         BOOL_PROPERTY_RESS(OnOffNVN);
+        INT_PROPERTY_RESS(NVNKDtype);
 
 #undef BOOL_PROPERTY
 #undef BOOL_PROPERTY_RESS
+#undef INT_PROPERTY_RESS
 #undef FLOAT_PROPERTY
 
 #define BOOL_PROPERTY_LRG(NAME)                                                        \

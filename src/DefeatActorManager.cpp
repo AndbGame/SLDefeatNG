@@ -237,10 +237,10 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActorManager::validPlayerForVictimRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsOnMount() || actor->HasKeywordString("DefeatActive")) {
+        if (actor == nullptr || actor->IsOnMount() || actor->HasKeywordString(_defeatManager->Forms.KeywordId.DefeatActive)) {
             return false;
         }
-        if (!actor->HasKeywordString("ActorTypeNPC")) {
+        if (!actor->HasKeywordString(_defeatManager->Forms.KeywordId.ActorTypeNPC)) {
             return _defeatManager->getConfig()->Config.BeastImmunity->get();
         }
         return true;
@@ -314,11 +314,39 @@ namespace SexLabDefeat {
         actor->GetInventoryChanges()->VisitWornItems(visitor);
         return ret;
     }
-    bool IDefeatActorManager::hasKeywordString(DefeatActorType source, std::string kwd) {
+    bool IDefeatActorManager::hasKeywordString(DefeatActorType source, std::string_view kwd) {
         return hasKeywordString(*source, kwd);
     }
-    bool IDefeatActorManager::hasKeywordString(DefeatActor& source, std::string kwd) {
+    bool IDefeatActorManager::hasKeywordString(DefeatActor& source, std::string_view kwd) {
         return source.getTESActor()->HasKeywordString(kwd);
+    }
+    bool IDefeatActorManager::isInFaction(DefeatActorType actor, RE::TESFaction* faction) {
+        return isInFaction(*actor, faction);
+    }
+    bool IDefeatActorManager::isInFaction(DefeatActor& actor, RE::TESFaction* faction) { 
+        return actor.getTESActor()->IsInFaction(faction);
+    }
+    bool IDefeatActorManager::hasCombatTarget(DefeatActorType source, DefeatActorType target) { 
+        auto combatGroup = source->getTESActor()->GetCombatGroup();
+        if (!combatGroup) {
+            return false;
+        }
+        combatGroup->lock.LockForRead();
+        bool ret = false;
+        for (auto&& combatTarget : combatGroup->targets) {
+            auto targetptr = combatTarget.targetHandle.get();
+            if (targetptr) {
+                auto targetActor = targetptr.get();
+                if (targetActor != nullptr) {
+                    if (targetActor == target->getTESActor()) {
+                        ret = true;
+                        break;
+                    }
+                }
+            }
+        }
+        combatGroup->lock.UnlockForRead();
+        return ret;
     }
     bool IDefeatActorManager::notInFlyingState(DefeatActorType source) {
         return notInFlyingState(*source);
@@ -340,5 +368,9 @@ namespace SexLabDefeat {
     bool IDefeatActorManager::isInKillMove(DefeatActor& source) { return source.getTESActor()->IsInKillMove(); }
     bool IDefeatActorManager::isQuestEnabled(RE::TESQuest* quest) { return quest != nullptr && quest->IsEnabled(); }
     bool IDefeatActorManager::isInCombat(DefeatActorType source) { return source->getTESActor()->IsInCombat(); }
+    bool IDefeatActorManager::isPlayerTeammate(DefeatActorType source) { return isPlayerTeammate(*source); }
+    bool IDefeatActorManager::isPlayerTeammate(DefeatActor& source) {
+        return source.getTESActor()->IsPlayerTeammate();
+    }
 
 }
