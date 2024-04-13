@@ -64,6 +64,11 @@ namespace SexLabDefeat {
         return IDefeatActor::isSexLabAllowed();
     }
 
+    bool DefeatActor::isDefeated() {
+        return _impl->getActorManager()->isInFaction(*this,
+                                              _impl->getActorManager()->getForms().Faction.DefeatFaction);
+    }
+
     bool DefeatActor::isDefeatAllowed2PC() {
         bool ret = true;
         if (isCreature()) {
@@ -89,7 +94,10 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::isIgnored() { 
-        return _impl->getActorManager()->isIgnored(_actor);
+        return _impl->getActorManager()->isIgnored(_actor); }
+
+    DefeatActorType DefeatActor::getLastHitAggressor() {
+        return _impl->getActorManager()->getDefeatActor(_data.lastHitAggressor);
     }
 
 

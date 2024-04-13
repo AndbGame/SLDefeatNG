@@ -18,6 +18,115 @@ namespace SexLabDefeat {
         }
     }
 
+    void DefeatCombatManager::onActorEnterBleedout(RE::Actor* actor) {
+        if (!_defeatActorManager->validForVictrimRole(actor)) {
+            return;
+        }
+
+        auto player = _defeatActorManager->getPlayer(actor);
+
+        auto isPlayer = player->isSame(actor);
+        DefeatActorType defeatActor = nullptr;
+
+        if (isPlayer) {
+            if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
+                SKSE::log::trace("onActorEnterBleedout PlayerVictim disabled - skipped");
+                return;
+            }
+        } else {
+            if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
+                SKSE::log::trace("onActorEnterBleedout NvN disabled - skipped");
+                return;
+            }
+        }
+        DefeatActorType target = _defeatActorManager->getDefeatActor(actor);
+
+        if (target->getState() == DefeatActorStates::KNONKDOWN_STATE ||
+            target->getState() == DefeatActorStates::KNONKOUT_STATE ||
+            target->getState() == DefeatActorStates::STANDING_STRUGGLE_STATE) {
+            SKSE::log::trace("onActorEnterBleedout target in Knockdown state - skipped");
+            return;
+        }
+
+        auto mcmConfig = _defeatManager->getConfig();
+
+        HitResult result = HitResult::SKIP;
+
+        if (isPlayer) {
+            result = HitResult::SKIP;
+        } else {
+            if (target->isIgnored()) {
+                SKSE::log::trace("onActorEnterBleedout <{:08X}:{}> rejected by Ignore Conditions", actor->GetFormID(),
+                                 actor->GetName());
+                return;
+            }
+            if (!_defeatActorManager->isInCombat(target)) {
+                SKSE::log::trace("onActorEnterBleedout - <{:08X}> not in combat - skipped", target->getTESFormId());
+                return;
+            }
+            if (_defeatActorManager->isCommandedActor(target)) {
+                SKSE::log::trace("onActorEnterBleedout - <{:08X}> is Commanded Actor - skipped",
+                                 target->getTESFormId());
+                return;
+            }
+            if (target->isCreature()) {
+                SKSE::log::trace("onActorEnterBleedout - <{:08X}> is creature - skipped", target->getTESFormId());
+                return;
+            }
+            if (!target->isKDAllowed()) {
+                SKSE::log::trace("onActorEnterBleedout - KD Not Allowed - skipped");
+                return;
+            }
+            if (mcmConfig->Config.NVNKDtype->get() < 2) {
+                SKSE::log::trace("onActorEnterBleedout - NVNKDtype disabled for HIT - skipped");
+                return;
+            }
+            if (_defeatActorManager->hasKeywordString(target, _defeatManager->Forms.KeywordId.DefeatActive)) {
+                SKSE::log::trace("onActorEnterBleedout - target is DefeatActive - skipped");
+                return;
+            }
+
+            if (target->isFollower() && !mcmConfig->Config.AllowCvic->get()) {
+                SKSE::log::trace("onActorEnterBleedout - Cvic not allowed - skipped");
+                return;
+            }
+
+            auto aggressor = _defeatActorManager->getSuitableAggressor(target);
+            if (aggressor) {
+                if (target->isFollower()) {
+                    if (mcmConfig->Config.AllowCvic->get()) {
+                        SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown by NPC <{:08X}>",
+                                         target->getTESFormId(), aggressor->getTESFormId());
+                        result = HitResult::KNOCKDOWN;
+                    }
+                } else {
+                    if (aggressor->isFollower()) {
+                        if (mcmConfig->Config.AllowCagg->get()) {
+                            SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by Follower <{:08X}>",
+                                             target->getTESFormId(), aggressor->getTESFormId());
+                            result = HitResult::KNOCKDOWN;
+                        }
+                    } else {
+                        SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by NPC <{:08X}>",
+                                         target->getTESFormId(), aggressor->getTESFormId());
+                        result = HitResult::KNOCKDOWN;
+                    }
+                }
+            } else {
+                if (target->isFollower()) {
+                    SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown without Agressor",
+                                     target->getTESFormId());
+                    result = HitResult::KNOCKDOWN;
+                }
+            }
+
+            if (result != HitResult::SKIP) {
+                target->setHitImmunityFor(10000ms);
+                _defeatActorManager->npcKnockDownEvent(target, aggressor, result, true);
+            }
+        }
+    }
+
     void DefeatCombatManager::onHitHandler(RawHitEvent event) {
         if (event.target == nullptr || event.aggressor == nullptr) {
             return;
@@ -34,6 +143,7 @@ namespace SexLabDefeat {
         auto player = _defeatActorManager->getPlayer(target_actor);
 
         auto isPlayerTarget = player->isSame(target_actor);
+        auto isPlayerAggressor = player->isSame(aggr_actor);
         DefeatActorType target = nullptr;
         DefeatActorType source = nullptr;
 
@@ -49,15 +159,19 @@ namespace SexLabDefeat {
             }
             target = player;
         } else {
-            if (!isPlayerTarget) {
+            if (!isPlayerAggressor) {
                 // npc -> npc
                 if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
                     SKSE::log::trace("onHitHandler NvN disabled - skipped");
                     return;
                 }
-                target = _defeatActorManager->getDefeatActor(aggr_actor);
+                target = _defeatActorManager->getDefeatActor(target_actor);
             } else {
                 // player -> npc
+                if (!_defeatManager->getConfig()->Config.OnOffPlayerAggressor->get()) {
+                    SKSE::log::trace("onHitHandler PvN disabled - skipped");
+                    return;
+                }
                 return;
             }
         }
@@ -76,6 +190,11 @@ namespace SexLabDefeat {
         if (source->isIgnored()) {
             SKSE::log::trace("onHitHandler Hit from <{:08X}:{}> rejected by Ignore Conditions",
                              event.aggressor->GetFormID(), event.aggressor->GetName());
+            return;
+        }
+        if (target->isIgnored()) {
+            SKSE::log::trace("onHitHandler Hit to <{:08X}:{}> rejected by Ignore Conditions", event.target->GetFormID(),
+                             event.target->GetName());
             return;
         }
 
@@ -98,6 +217,11 @@ namespace SexLabDefeat {
                                                  DefeatActorType sourceActor) {
         SKSE::log::trace("onPlayerHitHandler");
 
+        if (sourceActor->isFollower()) {
+            SKSE::log::trace("onPlayerHitHandler Aggressor is Follower - skipped");
+            return;
+        }
+
         targetActor->setLastHitAggressor(sourceActor);
 
         targetActor->requestExtraData(
@@ -111,26 +235,41 @@ namespace SexLabDefeat {
     void DefeatCombatManager::onNvNHitHandler(HitEvent event, DefeatActorType defActor, DefeatActorType source) {
         auto mcmConfig = _defeatManager->getConfig();
 
-        if (_defeatActorManager->hasCombatTarget(source, defActor)) {
-            SKSE::log::trace("onNvNHitHandler - Not in target");
+        if (!_defeatActorManager->isInCombat(defActor)) {
+            SKSE::log::trace("onNvNHitHandler - <{:08X}> not in combat - skipped", defActor->getTESFormId());
+            return;
+        }
+
+        if (_defeatActorManager->isCommandedActor(defActor)) {
+            SKSE::log::trace("onNvNHitHandler - <{:08X}> is Commanded Actor - skipped", defActor->getTESFormId());
+            return;
+        }
+
+        if (defActor->isCreature()) {
+            SKSE::log::trace("onNvNHitHandler - <{:08X}> is creature - skipped", defActor->getTESFormId());
+            return;
+        }
+
+        if (!_defeatActorManager->hasCombatTarget(source, defActor)) {
+            SKSE::log::trace("onNvNHitHandler - <{:08X}> not in target <{:08X}> - skipped", defActor->getTESFormId(),
+                             source->getTESFormId());
             return;
         }
         if (!event.target->isKDAllowed()) {
-            SKSE::log::trace("onNvNHitHandler - KD Not Allowed");
+            SKSE::log::trace("onNvNHitHandler - KD Not Allowed - skipped");
             return;
         }
         if (_defeatActorManager->hasKeywordString(source, _defeatManager->Forms.KeywordId.DefeatActive) &&
             !_defeatActorManager->hasKeywordString(source, _defeatManager->Forms.KeywordId.DefeatAggPlayer)) {
-            SKSE::log::trace("onNvNHitHandler - Aggressor is DefeatActive and not DefeatAggPlayer");
+            SKSE::log::trace("onNvNHitHandler - Aggressor is DefeatActive and not DefeatAggPlayer - skipped");
             return;
-
         }
         if (_defeatActorManager->getDistanceBetween(event.target, event.aggressor) > mcmConfig->KD_FAR_MAX_DISTANCE) {
-            SKSE::log::trace("onNvNHitHandler - Distance is too big");
+            SKSE::log::trace("onNvNHitHandler - Distance is too big - skipped");
             return;
         }
         if (mcmConfig->Config.NVNKDtype->get() > 2) {
-            SKSE::log::trace("onNvNHitHandler - NVNKDtype disabled for HIT");
+            SKSE::log::trace("onNvNHitHandler - NVNKDtype disabled for HIT - skipped");
             return;
         }
 
@@ -138,7 +277,7 @@ namespace SexLabDefeat {
         HitResult result = HitResult::SKIP;
 
         if (defActor->isFollower()) {
-            if (randomChanse(mcmConfig->Config.COHFollower->get())) {
+            if (mcmConfig->Config.AllowCvic->get() && randomChanse(mcmConfig->Config.COHFollower->get())) {
                 const auto health =
                     _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
                 if (health <= mcmConfig->Config.ThresholdFollower->get()) {
@@ -147,9 +286,10 @@ namespace SexLabDefeat {
                 }
             }
         } else {
-            if (source->isFollower()) {
-                if (mcmConfig->Config.AllowCagg->get()) {
-                    if (randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
+            if (mcmConfig->Config.EveryoneNVN->get() ||
+                _defeatActorManager->hasSexCombinationWithAggressor(defActor, source)) {
+                if (source->isFollower()) {
+                    if (mcmConfig->Config.AllowCagg->get() && randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
                         const auto health =
                             _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
                         if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
@@ -157,14 +297,14 @@ namespace SexLabDefeat {
                             result = HitResult::KNOCKDOWN;
                         }
                     }
-                }
-            } else {
-                if (randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
-                    const auto health =
-                        _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
-                    if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
-                        SKSE::log::trace("onNvNHitHandler NPC Knockdown by NPC");
-                        result = HitResult::KNOCKDOWN;
+                } else {
+                    if (mcmConfig->Config.AllowNPC->get() && randomChanse(mcmConfig->Config.ChanceOnHitNPC->get())) {
+                        const auto health =
+                            _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
+                        if (health <= mcmConfig->Config.ThresholdNPCvsNPC->get()) {
+                            SKSE::log::trace("onNvNHitHandler NPC Knockdown by NPC");
+                            result = HitResult::KNOCKDOWN;
+                        }
                     }
                 }
             }

@@ -39,7 +39,7 @@ namespace {
         _defeatManager->setActorState(actor, _state);
     }
 
-    inline RE::Actor* getLastHitAggressor(RE::Actor* actor) {
+    inline RE::Actor* getLastHitAggressor(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
         auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
         if (defeatActor) {
             auto formId = defeatActor->getLastHitAggressorFormId();
@@ -168,6 +168,7 @@ namespace SexLabDefeat {
         LOAD_FORM(Forms.DefeatMCMQst, RE::TESQuest, 0x06D3D4, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatRessourcesQst, RE::TESQuest, 0x04B8D1, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatPlayerQTE, RE::TESQuest, 0x0B5F7C, "SexLabDefeat.esp");
+        LOAD_FORM(Forms.Faction.DefeatFaction, RE::TESFaction, 0x001D92, "SexLabDefeat.esm");
 
         LOAD_FORM(Forms.SexLabQuestFramework, RE::TESQuest, 0x000D62, "SexLab.esm");
 
@@ -199,6 +200,7 @@ namespace SexLabDefeat {
                 Forms.Ignore.Factions.push_back(baboFaction);
             }
         }
+        Forms.Ignore.Keywords.push_back(Forms.KeywordId.SexLabActive);
 
 #undef LOAD_FORM
     }

@@ -46,6 +46,10 @@ namespace SexLabDefeat {
             UniqueSpinLock lock(*this);
             _data.lastHitAggressor = lastHitAggressor->getTESFormId();
         }
+        DefeatActorType getLastHitAggressor() override {
+            UniqueSpinLock lock(*this);
+            return getActorManager()->getDefeatActor(_data.lastHitAggressor);
+        }
 
         float incrementDynamicDefeat(float val) override {
             UniqueSpinLock lock(*this);

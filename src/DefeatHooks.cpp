@@ -59,6 +59,25 @@ namespace EventSync {
 
     };
 
+    class OnTESEnterBleedoutEventHandler : public RE::BSTEventSink<RE::TESEnterBleedoutEvent> {
+    public:
+        OnTESEnterBleedoutEventHandler(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        ~OnTESEnterBleedoutEventHandler() = default;
+        SexLabDefeat::DefeatManager* _defeatManager;
+
+        virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEnterBleedoutEvent* a_event,
+                                                      RE::BSTEventSource<RE::TESEnterBleedoutEvent>* a_eventSource) {
+            if (a_event->actor != nullptr) {
+                auto target_actor = a_event->actor->As<RE::Actor>();
+                if (target_actor != nullptr) {
+                    SKSE::log::info("OnTESEnterBleedoutEventHandler <{:08X}:{}> Enter Bleedout", target_actor->GetFormID(),
+                                    target_actor->GetName());
+                    _defeatManager->getCombatManager()->onActorEnterBleedout(target_actor);
+                }
+            }
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    };
 
     class OnTESEquipEventHandler : public RE::BSTEventSink<RE::TESEquipEvent> {
     public:
@@ -103,9 +122,57 @@ namespace EventSync {
     };
 }
 
+namespace Hooks {
+    SexLabDefeat::DefeatManager* manager;
+
+    static void UpdateCombatControllerSettings(RE::Character* a_this);
+    static inline REL::Relocation<decltype(UpdateCombatControllerSettings)> _UpdateCombatControllerSettings;
+
+    void UpdateCombatControllerSettings(RE::Character* character) {
+        _UpdateCombatControllerSettings(character);
+
+        if (character && character->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
+            if (character->IsInCombat()) {
+                character->StopCombat();
+            }
+            return;
+        }
+        auto group = character->GetCombatGroup();
+        if (!group) {
+            return;
+        }
+        std::vector<RE::CombatTarget*> toRemove{};
+
+        group->lock.LockForWrite();
+
+        for (auto&& cmbtarget : group->targets) {
+            auto targetptr = cmbtarget.targetHandle.get();
+            if (targetptr) {
+                auto targetActor = targetptr.get();
+                if (targetActor && targetActor->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
+                    toRemove.push_back(&cmbtarget);
+                }
+            }
+        }
+        for (auto&& remove : toRemove) {
+            if (remove->targetHandle.get().get() != nullptr && remove->attackedMember.get().get() != nullptr) {
+                group->targets.erase(remove);
+            }
+        }
+
+        group->lock.UnlockForWrite();
+    }
+}
+
 void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
-    //SKSE::log::info("Install hooks pre");
-    //SKSE::log::info("Install hooks post");
+    Hooks::manager = defeatManager;
+
+    SKSE::log::info("Install hooks pre");
+    if (defeatManager->getConfig()->Hooks.UpdateCombatControllerSettings > 0) {
+        REL::Relocation<std::uintptr_t> upccs{RE::Character::VTABLE[0]};
+        Hooks::_UpdateCombatControllerSettings = upccs.write_vfunc(0x11B, Hooks::UpdateCombatControllerSettings);
+    }
+    SKSE::log::info("Install hooks post");
 }
 
 void SexLabDefeat::installEventSink(SexLabDefeat::DefeatManager* defeatManager) {
@@ -114,6 +181,7 @@ void SexLabDefeat::installEventSink(SexLabDefeat::DefeatManager* defeatManager) 
     if (scriptEventSource) {
         scriptEventSource->AddEventSink(new EventSync::OnTESCombatEventHandler(defeatManager));
         scriptEventSource->AddEventSink(new EventSync::OnTESHitEventHandler(defeatManager));
+        scriptEventSource->AddEventSink(new EventSync::OnTESEnterBleedoutEventHandler(defeatManager));
         //scriptEventSource->AddEventSink(new EventSync::OnTESEquipEventHandler(defeatManager));
     } else {
         SKSE::log::critical("Install EventSink failed");

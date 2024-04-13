@@ -9,6 +9,7 @@ namespace SexLabDefeat {
             CFG_PAPYUNHOOK = _iniConfig.get<int>("General.UnhookPapyrus");
             CFG_LOGGING = _iniConfig.get<int>("General.Logging");
             HIT_SPAM_GUARD_EXPIRATION_MS = milliseconds(_iniConfig.get<int>("CombatManager.HitSpamGuardMs"));
+            Hooks.UpdateCombatControllerSettings = _iniConfig.get<int>("Hooks.UpdateCombatControllerSettings");
         } catch (std::exception& ex) {
             SKSE::log::warn("ERROR LOADING ini FILE: {}", ex.what());
         }
@@ -88,12 +89,15 @@ namespace SexLabDefeat {
         BOOL_PROPERTY(bResistQTE);
 
         BOOL_PROPERTY(EveryoneNVN);
+        BOOL_PROPERTY(AllowNPC);
         BOOL_PROPERTY(AllowCagg);
+        BOOL_PROPERTY(AllowCvic);
         FLOAT_PROPERTY(ThresholdNPCvsNPC);
         FLOAT_PROPERTY(ThresholdFollower);
         FLOAT_PROPERTY(ChanceOnHitNPC);
         FLOAT_PROPERTY(COHFollower);
 
+        BOOL_PROPERTY_RESS(OnOffPlayerAggressor);
         BOOL_PROPERTY_RESS(OnOffPlayerVictim);
         BOOL_PROPERTY_RESS(OnOffNVN);
         INT_PROPERTY_RESS(NVNKDtype);
