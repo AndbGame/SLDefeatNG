@@ -11,11 +11,21 @@ namespace EventSync {
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESCombatEvent* a_event,
             RE::BSTEventSource<RE::TESCombatEvent>* a_eventSource) {
             if (a_event->actor != nullptr && a_event->newState.any(RE::ACTOR_COMBAT_STATE::kCombat)) {
-                auto target_actor = a_event->actor->As<RE::Actor>();
-                if (target_actor != nullptr) {
-                    SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state",
-                                    target_actor->GetFormID(), target_actor->GetName());
-                    _defeatManager->getCombatManager()->onActorEnteredToCombatState(target_actor);
+                auto actor = a_event->actor->As<RE::Actor>();
+                RE::Actor* target_actor = nullptr;
+                if (a_event->targetActor != nullptr) {
+                    target_actor = a_event->targetActor->As<RE::Actor>();
+                }
+                if (actor != nullptr) {
+                    if (target_actor) {
+                        SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state with <{:08X}:{}>",
+                                        actor->GetFormID(), actor->GetName(), target_actor->GetFormID(),
+                                        target_actor->GetName());
+                    } else {
+                        SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state",
+                                        actor->GetFormID(), actor->GetName());
+                    }
+                    _defeatManager->getCombatManager()->onActorEnteredToCombatState(actor, target_actor);
                 }
             }
             return RE::BSEventNotifyControl::kContinue;
@@ -123,44 +133,59 @@ namespace EventSync {
 }
 
 namespace Hooks {
+    using clock = std::chrono::high_resolution_clock;
     SexLabDefeat::DefeatManager* manager;
 
     static void UpdateCombatControllerSettings(RE::Character* a_this);
     static inline REL::Relocation<decltype(UpdateCombatControllerSettings)> _UpdateCombatControllerSettings;
 
+    std::map<RE::FormID, clock::time_point> _sexLabInterruptExpirations;
+    SexLabDefeat::SpinLock _sexLabInterruptExpirationsLock;
+
     void UpdateCombatControllerSettings(RE::Character* character) {
         _UpdateCombatControllerSettings(character);
 
-        if (character && character->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
+        /* if (character && character->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
             if (character->IsInCombat()) {
                 character->StopCombat();
             }
             return;
-        }
+        }*/
         auto group = character->GetCombatGroup();
         if (!group) {
             return;
         }
-        std::vector<RE::CombatTarget*> toRemove{};
+        auto now = clock::now();
 
-        group->lock.LockForWrite();
+        group->lock.LockForRead();
 
         for (auto&& cmbtarget : group->targets) {
             auto targetptr = cmbtarget.targetHandle.get();
             if (targetptr) {
                 auto targetActor = targetptr.get();
-                if (targetActor && targetActor->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
-                    toRemove.push_back(&cmbtarget);
+                if (targetActor) {
+                    SKSE::log::info("UpdateCombatControllerSettings <{:08X}:{}> -> <{:08X}:{}>", character->GetFormID(),
+                                    character->GetName(), targetActor->GetFormID(), targetActor->GetName());
+                }
+                if (targetActor && !targetActor->IsPlayer() &&
+                    targetActor->HasKeywordString(manager->Forms.KeywordId.SexLabActive)) {
+                    _sexLabInterruptExpirationsLock.spinLock();
+                    auto val = _sexLabInterruptExpirations.find(targetActor->GetFormID());
+                    if (val == _sexLabInterruptExpirations.end() || (now > val->second)) {
+                        _sexLabInterruptExpirations.insert_or_assign(targetActor->GetFormID(), now + 5000ms);
+                        _sexLabInterruptExpirationsLock.spinUnlock();
+
+                        auto target = manager->getActorManager()->getDefeatActor(targetActor);
+                        auto aggressor = manager->getActorManager()->getDefeatActor(character);
+                        manager->getCombatManager()->onSexLabSceneInterrupt(target, aggressor, true);
+                    } else {
+                        _sexLabInterruptExpirationsLock.spinUnlock();
+                    }
                 }
             }
         }
-        for (auto&& remove : toRemove) {
-            if (remove->targetHandle.get().get() != nullptr && remove->attackedMember.get().get() != nullptr) {
-                group->targets.erase(remove);
-            }
-        }
 
-        group->lock.UnlockForWrite();
+        group->lock.UnlockForRead();
     }
 }
 
@@ -169,8 +194,8 @@ void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
 
     SKSE::log::info("Install hooks pre");
     if (defeatManager->getConfig()->Hooks.UpdateCombatControllerSettings > 0) {
-        REL::Relocation<std::uintptr_t> upccs{RE::Character::VTABLE[0]};
-        Hooks::_UpdateCombatControllerSettings = upccs.write_vfunc(0x11B, Hooks::UpdateCombatControllerSettings);
+        //REL::Relocation<std::uintptr_t> upccs{RE::Character::VTABLE[0]};
+        //Hooks::_UpdateCombatControllerSettings = upccs.write_vfunc(0x11B, Hooks::UpdateCombatControllerSettings);
     }
     SKSE::log::info("Install hooks post");
 }

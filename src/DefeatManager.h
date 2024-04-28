@@ -13,6 +13,8 @@ namespace SexLabDefeat {
 
     class DefeatManager : public IDefeatManager {
     public:
+        static std::map<DefeatActorStates, std::string> DefeatActorStatesStrings;
+
         DefeatManager(DefeatConfig* defeatConfig);
         DefeatManager(DefeatManager const&) = delete;
         void operator=(DefeatManager const& x) = delete;
@@ -30,7 +32,7 @@ namespace SexLabDefeat {
         void reInitializeWidget();
         PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
         void setWidget(DefeatWidget* widget);
-        void setActorState(RE::Actor* target_actor, DefeatActorStates state);
+        void setActorState(RE::Actor* target_actor, DefeatActorStates state, bool isTransition = true);
 
     protected:
         void initializeDependency();

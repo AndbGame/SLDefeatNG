@@ -54,11 +54,24 @@ namespace SexLabDefeat {
         float DFWVulnerability = 0;
     };
 
-    enum DefeatActorStates { NONE, ACTIVE, DISACTIVE, KNONKOUT_STATE, STANDING_STRUGGLE_STATE, KNONKDOWN_STATE };
+    enum DefeatActorStates {
+        NONE,
+        ACTIVE,
+        DISACTIVE,
+        KNONKOUT_STATE,
+        STANDING_STRUGGLE_STATE,
+        KNONKDOWN_STATE,
+        TRAUMA_STATE,
+        EXHAUSTED_STATE,
+        SURRENDER_STATE,
+        YIELD_STATE,
+        ESCAPE_STATE,
+        TIED_STATE,
+    };
     enum class DefeatActorStateFlags : uint8_t {
         NONE = 0,
-        KNOCK_ALLOWED = 1 << 0,
-        // flag2 = 1 << 1,
+        KNOCK_ALLOWED = 1 << 0, // UNUSED
+        STATE_TRANSITION = 1 << 1,
         // flag3 = 1 << 2,
         // flag3 = 1 << 3,
         // flag3 = 1 << 4,
@@ -72,7 +85,7 @@ namespace SexLabDefeat {
         RE::FormID lastHitAggressor = 0;
         bool isSurrender = false;
         DefeatActorStates state = DefeatActorStates::ACTIVE;
-        DefeatActorStateFlags flags = DefeatActorStateFlags::NONE;
+        SKSE::stl::enumeration<DefeatActorStateFlags, std::uint8_t> flags = DefeatActorStateFlags::NONE;
         float dynamicDefeat = 0;
         float vulnerability = 0;
 
@@ -177,7 +190,12 @@ namespace SexLabDefeat {
             RE::TESFaction* CurrentFollowerFaction;
             RE::TESFaction* CurrentHireling;
             RE::TESFaction* DefeatFaction;
+            RE::TESFaction* SexLabAnimatingFaction;
         } Faction;
+
+        struct {
+            RE::TESIdleForm* BleedoutStart;
+        } Idle;
     };
 
     /***************************************************************************************************
@@ -249,6 +267,9 @@ namespace SexLabDefeat {
             PapyrusInterface::BoolVarPtr OnOffPlayerAggressor;
             PapyrusInterface::BoolVarPtr OnOffPlayerVictim;
             PapyrusInterface::BoolVarPtr OnOffNVN;
+
+            PapyrusInterface::BoolVarPtr HitInterrupt;          // Interrupt SL scene on Hit
+            PapyrusInterface::BoolVarPtr CombatInterrupt;       // Interrupt SL scene on Combat start
 
             struct {
                 PapyrusInterface::BoolVarPtr DeviousFrameworkON;
@@ -351,6 +372,8 @@ namespace SexLabDefeat {
 
         DefeatActorStates getState() const { return _data.state; };
         virtual void setState(DefeatActorStates state) = 0;
+        bool isStateTransition() { return _data.flags.any(DefeatActorStateFlags::STATE_TRANSITION); };
+        virtual void setStateTransition(bool val) = 0;
 
         float getDynamicDefeat() const { return _data.dynamicDefeat; }
         virtual float incrementDynamicDefeat(float val) = 0;
@@ -422,6 +445,7 @@ namespace SexLabDefeat {
         bool isKDAllowed();
         bool isTied();
         bool isSexLabAllowed() override;
+        bool inSexLabScene();
         bool isDefeated() override;
         bool isDefeatAllowed2PC();
         bool isDefeatAllowed2NvN();
@@ -459,6 +483,7 @@ namespace SexLabDefeat {
         bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override {
             return _impl->registerAndCheckHitGuard(aggressor, source, projectile);
         };
+        void setStateTransition(bool val) override { return _impl->setStateTransition(val); }
 
         bool isSheduledDeplateDynamicDefeat() { return _impl->isSheduledDeplateDynamicDefeat(); }
         bool sheduleDeplateDynamicDefeat() { return _impl->sheduleDeplateDynamicDefeat(); }
@@ -499,6 +524,7 @@ namespace SexLabDefeat {
         /* Pre Checks functions */
         virtual bool isIgnored(RE::Actor* actor) { return false; };
         virtual bool validForAggressorRole(RE::Actor* actor);
+        virtual bool validForAggressorRole(DefeatActorType actor);
         virtual bool validForVictrimRole(RE::Actor* actor);
         virtual bool validPlayerForVictimRole(RE::Actor* actor) = 0;
         /* / Pre Checks functions  */
@@ -510,12 +536,16 @@ namespace SexLabDefeat {
         virtual bool checkAggressor(DefeatActorType target, DefeatActorType aggressor) = 0;
 
         virtual void playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) = 0;
+        virtual void sexLabSceneInterrupt(DefeatActorType target, DefeatActorType aggressor, bool isHit) = 0;
+        virtual void sexLabSceneInterrupt(RE::Actor* target, RE::Actor* aggressor, bool isHit) = 0;
         virtual void npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event,
-                                       bool isBleedout = false) = 0;
+                                       bool isBleedout = false, bool isAssault = false) = 0;
 
         float getDistanceBetween(DefeatActorType source, DefeatActorType target);
         void forEachActorsInRange(RE::Actor* target, float a_range, std::function<bool(RE::Actor* a_actor)> a_callback);
         virtual DefeatActorType getSuitableAggressor(DefeatActorType actor) = 0;
+        virtual std::list<DefeatActorType> getSuitableFollowers(DefeatActorType actor) = 0;
+        virtual std::list<DefeatActorType> getSuitableAggressors(DefeatActorType actor) = 0;
         float getHeadingAngleBetween(DefeatActorType source, DefeatActorType target);
         float getActorValuePercentage(DefeatActorType source, RE::ActorValue av);
         RE::TESForm* getEquippedHitSourceByFormID(DefeatActorType source, RE::FormID hitSource);
@@ -550,7 +580,7 @@ namespace SexLabDefeat {
      ****************************************************************************************************/
     class IDefeatCombatManager {
     public:
-        virtual void onActorEnteredToCombatState(RE::Actor* target_actor) = 0;
+        virtual void onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) = 0;
         virtual void onHitHandler(RawHitEvent event) = 0;
         virtual void onActorEnterBleedout(RE::Actor* target_actor) = 0;
     };

@@ -64,6 +64,12 @@ namespace SexLabDefeat {
         return IDefeatActor::isSexLabAllowed();
     }
 
+    bool DefeatActor::inSexLabScene() {
+        return _impl->getActorManager()->hasKeywordString(*this,
+                                                           _impl->getActorManager()->getForms().KeywordId.SexLabActive) || 
+            (_impl->getActorManager()->getForms().Faction.SexLabAnimatingFaction && _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.SexLabAnimatingFaction));
+    }
+
     bool DefeatActor::isDefeated() {
         return _impl->getActorManager()->isInFaction(*this,
                                               _impl->getActorManager()->getForms().Faction.DefeatFaction);

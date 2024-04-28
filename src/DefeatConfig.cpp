@@ -102,6 +102,9 @@ namespace SexLabDefeat {
         BOOL_PROPERTY_RESS(OnOffNVN);
         INT_PROPERTY_RESS(NVNKDtype);
 
+        BOOL_PROPERTY(HitInterrupt);
+        BOOL_PROPERTY(CombatInterrupt);
+
 #undef BOOL_PROPERTY
 #undef BOOL_PROPERTY_RESS
 #undef INT_PROPERTY_RESS

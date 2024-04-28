@@ -205,7 +205,23 @@ namespace SexLabDefeat {
     };
 
     void DefeatActorManager::playerKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event) {
-        auto vm = RE::SkyrimVM::GetSingleton();
+        PapyrusInterface::CallbackPtr callback(new DefeatRequestCallback(DefeatRequestCallback::ActorType::PLAYER));
+
+        RE::BSFixedString eventStr = "KNOCKDOWN";
+        if (event == HitResult::KNOCKOUT) {
+            eventStr = "KNOCKOUT";
+        } else if (event == HitResult::STANDING_STRUGGLE) {
+            eventStr = "STANDING_STRUGGLE";
+        }
+        SKSE::log::trace("playerKnockDownEvent <{}>", eventStr);
+
+        if (PapyrusInterface::DispatchStaticCall("defeat_skse_api", "playerKnockDownEvent", callback,
+                                                 aggressor->getTESActor(), std::move(eventStr))) {
+            return;
+        }
+        SKSE::log::error("Failed to dispatch static call [defeat_skse_api::npcKnockDownEvent].");
+
+/* auto vm = RE::SkyrimVM::GetSingleton();
         if (vm) {
             const auto handle = vm->handlePolicy.GetHandleForObject(static_cast<RE::VMTypeID>(RE::FormType::Reference),
                                                                     target->getTESActor());
@@ -217,7 +233,7 @@ namespace SexLabDefeat {
                     eventStr = "STANDING_STRUGGLE";
                 }
                 SKSE::log::trace("playerKnockDownEvent <{}>", eventStr);
-                auto eventArgs =
+                 auto eventArgs =
                     RE::MakeFunctionArguments((RE::TESObjectREFR*)aggressor->getTESActor(), std::move(eventStr));
 
                 vm->SendAndRelayEvent(
@@ -225,11 +241,83 @@ namespace SexLabDefeat {
                     &(_defeatManager->getConfig()->Config.PapyrusFunctionNames.OnSLDefeatPlayerKnockDownEventName),
                     eventArgs, nullptr);
             }
+        }*/
+    }
+    void DefeatActorManager::sexLabSceneInterrupt(DefeatActorType target, DefeatActorType aggressor, bool isHit) {
+        if (aggressor) {
+            sexLabSceneInterrupt(target->getTESActor(), aggressor->getTESActor(), isHit);
+        } else {
+            sexLabSceneInterrupt(target->getTESActor(), nullptr, isHit);
         }
     }
 
-    void DefeatActorManager::npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event, bool isBleedout) {
-        PapyrusInterface::CallbackPtr callback(new PapyrusInterface::EmptyRequestCallback("npcKnockDownEvent"));
+    void DefeatActorManager::sexLabSceneInterrupt(RE::Actor* target, RE::Actor* aggressor, bool isHit) {
+        auto now = clock::now();
+
+        _sexLabInterruptExpirationsLock.spinLock();
+        auto val = _sexLabInterruptExpirations.find(target->GetFormID());
+        if (val == _sexLabInterruptExpirations.end() || (now > val->second)) {
+            _sexLabInterruptExpirations.insert_or_assign(target->GetFormID(), now + 5000ms);
+            _sexLabInterruptExpirationsLock.spinUnlock();
+
+            if (target->IsPlayerRef()) {
+                    return;  // TODO
+            }
+            auto mcmConfig = _defeatManager->getConfig();
+            if (mcmConfig->Config.OnOffPlayerVictim->get() && !mcmConfig->Config.OnOffNVN->get()) {
+            } else {
+                if (isHit) {
+                    if (!mcmConfig->Config.HitInterrupt->get()) {
+                        return;
+                    }
+                } else {
+                    if (!mcmConfig->Config.CombatInterrupt->get()) {
+                        return;
+                    }
+                }
+
+                PapyrusInterface::CallbackPtr callback(
+                    new PapyrusInterface::EmptyRequestCallback("sexLabSceneInterrupt"));
+
+                if (aggressor) {
+                    SKSE::log::trace("sexLabSceneInterrupt: <{:08X}:{}> by <{:08X}:{}>", target->GetFormID(),
+                                     target->GetName(), aggressor->GetFormID(), aggressor->GetName());
+                } else {
+                    SKSE::log::trace("sexLabSceneInterrupt: <{:08X}:{}>", target->GetFormID(),
+                                     target->GetName());
+                }
+
+                if (PapyrusInterface::DispatchStaticCall("defeat_skse_api", "sexLabSceneInterrupt", callback,
+                                                            std::move(target), std::move(aggressor))) {
+                    return;
+                }
+                SKSE::log::error("Failed to dispatch static call [defeat_skse_api::npcKnockDownEvent].");
+
+            }
+        } else {
+            _sexLabInterruptExpirationsLock.spinUnlock();
+            SKSE::log::trace("sexLabSceneInterrupt: <{:08X}:{}> not allowed", target->GetFormID(), target->GetName());
+        }
+    }
+
+    
+
+        static OnBSAnimationGraphEventHandler* instanse;
+
+    static OnBSAnimationGraphEventHandler* getInstance() {
+        if (!instanse) {
+            instanse = new OnBSAnimationGraphEventHandler();
+        }
+        return instanse;
+    }
+
+    void DefeatActorManager::npcKnockDownEvent(DefeatActorType target, DefeatActorType aggressor, HitResult event,
+                                               bool isBleedout, bool isAssault) {
+        auto npcType = DefeatRequestCallback::ActorType::NPC;
+        if (target->isFollower()) {
+            npcType = DefeatRequestCallback::ActorType::FOLLOWER;
+        }
+        PapyrusInterface::CallbackPtr callback(new DefeatRequestCallback(npcType));
 
         RE::BSFixedString eventStr = "KNOCKDOWN";
         if (event == HitResult::KNOCKOUT) {
@@ -237,13 +325,22 @@ namespace SexLabDefeat {
         } else if (event == HitResult::STANDING_STRUGGLE) {
             eventStr = "STANDING_STRUGGLE";
         }
+        RE::Actor* aggressorActor = nullptr;
+        RE::Actor* targetActor = target->getTESActor();
+        if (aggressor) {
+            aggressorActor = aggressor->getTESActor();
+            SKSE::log::trace("npcKnockDownEvent - {}: <{:08X}> from <{:08X}>", eventStr, target->getTESFormId(),
+                             aggressor->getTESFormId());
+        } else {
+            SKSE::log::trace("npcKnockDownEvent - {}: <{:08X}>", eventStr, target->getTESFormId());
+        }
 
-        SKSE::log::trace("npcKnockDownEvent - {}: <{:08X}> from <{:08X}>", eventStr, target->getTESFormId(),
-                         aggressor->getTESFormId());
-
+        //target->getTESActor()->AddAnimationGraphEventSink(getInstance());
         if (PapyrusInterface::DispatchStaticCall("defeat_skse_api", "npcKnockDownEvent", callback,
-                                                 target->getTESActor(), aggressor->getTESActor(),
-                                                 std::move(eventStr), std::move(isBleedout))) {
+                                                 std::move(targetActor),
+                                                 std::move(aggressorActor), std::move(eventStr),
+                                                 std::move(isBleedout), std::move(isAssault))) {
+            //target->getTESActor()->GetActorRuntimeData().boolFlags.set(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
             return;
         }
         SKSE::log::error("Failed to dispatch static call [defeat_skse_api::npcKnockDownEvent].");
@@ -263,15 +360,19 @@ namespace SexLabDefeat {
         return false;
     }
 
+    bool IDefeatActorManager::validForAggressorRole(DefeatActorType actor) {
+        return validForAggressorRole(actor->getTESActor());
+    }
+
     bool IDefeatActorManager::validForAggressorRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
+        if (actor == nullptr || actor->IsGhost() || !actor->Is3DLoaded()) {
             return false;
         }
         return true;
     }
 
     bool IDefeatActorManager::validForVictrimRole(RE::Actor* actor) {
-        if (actor == nullptr || actor->IsGhost()) {
+        if (actor == nullptr || actor->IsGhost() || !actor->Is3DLoaded()) {
             return false;
         }
         return true;
@@ -300,14 +401,20 @@ namespace SexLabDefeat {
     }
     void IDefeatActorManager::forEachActorsInRange(RE::Actor* target, float a_range,
                                                   std::function<bool(RE::Actor* a_actor)> a_callback) {
-        const auto playerPos = target->GetPosition();
+        const auto position = target->GetPosition();
 
         for (auto actorHandle : RE::ProcessLists::GetSingleton()->highActorHandles) {
             if (auto actorPtr = actorHandle.get()) {
                 if (auto actor = actorPtr.get()) {
-                    if (playerPos.GetDistance(actor->GetPosition()) <= a_range) {
-                        if (!a_callback(actor)) {
-                            break;
+                    if (a_range == 0 || position.GetDistance(actor->GetPosition()) <= a_range) {
+                        auto loc_refBase = actor->GetActorBase();
+                        if (actor && actor != target && !actor->IsDisabled() && actor->Is3DLoaded() &&
+                            !actor->IsPlayerRef() && !actor->IsDead() &&
+                            (actor->Is(RE::FormType::NPC) || (loc_refBase && loc_refBase->Is(RE::FormType::NPC))) &&
+                            !actor->IsGhost() && !actor->IsOnMount()) {
+                            if (!a_callback(actor)) {
+                                break;
+                            }
                         }
                     }
                 }
@@ -319,24 +426,31 @@ namespace SexLabDefeat {
 
         auto lastAggressor = actor->getLastHitAggressor();
 
-        if (lastAggressor && getDistanceBetween(actor, lastAggressor) > 2000 && !(EveryoneNVN ||
-                        this->hasSexCombinationWithAggressor(actor, lastAggressor))) {
-            lastAggressor = nullptr;
+        if (lastAggressor) {
+            if (getDistanceBetween(actor, lastAggressor) > 2000 ||
+                !(EveryoneNVN || this->hasSexCombinationWithAggressor(actor, lastAggressor)) ||
+                !validForAggressorRole(lastAggressor) || 
+                    (hasKeywordString(lastAggressor, _defeatManager->Forms.KeywordId.DefeatActive) &&
+                    !hasKeywordString(lastAggressor, _defeatManager->Forms.KeywordId.DefeatAggPlayer))
+                ) {
+
+                lastAggressor = nullptr;
+            }
         }
 
         if (!lastAggressor) {
             forEachActorsInRange(actor->getTESActor(), 2000, [&](RE::Actor* a_actor) {
-                auto loc_refBase = a_actor->GetActorBase();
-                
-                if (a_actor && !a_actor->IsDisabled() && a_actor->Is3DLoaded() && !a_actor->IsPlayerRef() &&
-                    (a_actor->Is(RE::FormType::NPC) || (loc_refBase && loc_refBase->Is(RE::FormType::NPC))) &&
-                    !a_actor->IsGhost() && !a_actor->IsOnMount() &&
-                    !a_actor->HasKeywordString(_defeatManager->Forms.KeywordId.DefeatActive)) {
+                if (a_actor->IsInCombat() &&
+                    (!a_actor->HasKeywordString(_defeatManager->Forms.KeywordId.DefeatActive) ||
+                     a_actor->HasKeywordString(_defeatManager->Forms.KeywordId.DefeatAggPlayer)) &&
+                    a_actor->IsHostileToActor(actor->getTESActor())
+                    ) {
                     // TODO: additional checks
                     // TODO: maybe last in target/hit agressors
                     DefeatActorType aggrActor = getDefeatActor(a_actor);
-                    if (EveryoneNVN ||
-                        this->hasSexCombinationWithAggressor(actor, aggrActor)) {
+                    if (validForAggressorRole(aggrActor) &&
+                        (EveryoneNVN ||
+                        this->hasSexCombinationWithAggressor(actor, aggrActor))) {
                         lastAggressor = aggrActor;
                         SKSE::log::trace("getSuitableAggressor in range for <{:08X}> is <{:08X}>",
                                          actor->getTESFormId(), aggrActor->getTESFormId());
@@ -347,6 +461,28 @@ namespace SexLabDefeat {
             });
         }
         return lastAggressor;
+    }
+    std::list<DefeatActorType> DefeatActorManager::getSuitableFollowers(DefeatActorType actor) {
+        auto ret = std::list<DefeatActorType>();
+        forEachActorsInRange(actor->getTESActor(), 0, [&](RE::Actor* a_actor) {
+            if (a_actor->IsPlayerTeammate() ||
+                a_actor->IsInFaction(_defeatManager->Forms.Faction.CurrentFollowerFaction) ||
+                a_actor->IsInFaction(_defeatManager->Forms.Faction.CurrentHireling)) {
+
+                auto defeatActor = getDefeatActor(a_actor);
+                if (defeatActor) {
+                    ret.push_back(defeatActor);
+                    SKSE::log::trace("getSuitableFollowers: <{:08X}>", a_actor->GetFormID(),
+                                     a_actor->GetName());
+                }
+            }
+            return true;
+        });
+        return ret;
+    }
+    std::list<DefeatActorType> DefeatActorManager::getSuitableAggressors(DefeatActorType actor) {
+        auto ret = std::list<DefeatActorType>();
+        return ret;
     }
     float IDefeatActorManager::getHeadingAngleBetween(DefeatActorType source, DefeatActorType target) {
         auto a1 = target->getTESActor()->GetPosition();
@@ -465,6 +601,13 @@ namespace SexLabDefeat {
     bool IDefeatActorManager::isPlayerTeammate(DefeatActorType source) { return isPlayerTeammate(*source); }
     bool IDefeatActorManager::isPlayerTeammate(DefeatActor& source) {
         return source.getTESActor()->IsPlayerTeammate();
+    }
+
+    void DefeatRequestCallback::operator()(RE::BSScript::Variable a_result) {
+        //auto process = RE::ProcessLists::GetSingleton();
+        //process->runDetection = false;
+        //process->ClearCachedFactionFightReactions();
+        //process->runDetection = true;
     }
 
 }

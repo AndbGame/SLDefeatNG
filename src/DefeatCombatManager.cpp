@@ -10,11 +10,27 @@ namespace SexLabDefeat {
     DefeatCombatManager::~DefeatCombatManager() {
     }
 
-    void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* target_actor) {
-        auto defActor = _defeatActorManager->getDefeatActor(target_actor);
-        if (!defActor->isIgnored()) {
-            defActor->requestExtraData(
-                defActor, [&] {}, 10s);
+    void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) {
+        auto sourceActor = _defeatActorManager->getDefeatActor(actor);
+
+        if (sourceActor->inSexLabScene()) {
+            onSexLabSceneInterrupt(sourceActor, nullptr, false);
+        }
+
+        if (!sourceActor->isIgnored()) {
+            sourceActor->requestExtraData(
+                sourceActor, [&] {}, 10s);
+        }
+
+        if (target_actor) {
+            auto targetActor = _defeatActorManager->getDefeatActor(target_actor);
+            if (targetActor->inSexLabScene()) {
+                onSexLabSceneInterrupt(targetActor, nullptr, false);
+            }
+            if (!targetActor->isIgnored()) {
+                targetActor->requestExtraData(
+                    targetActor, [&] {}, 10s);
+            }
         }
     }
 
@@ -23,7 +39,7 @@ namespace SexLabDefeat {
             return;
         }
 
-        auto player = _defeatActorManager->getPlayer(actor);
+        auto player = _defeatActorManager->getPlayer(nullptr);
 
         auto isPlayer = player->isSame(actor);
         DefeatActorType defeatActor = nullptr;
@@ -31,11 +47,6 @@ namespace SexLabDefeat {
         if (isPlayer) {
             if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
                 SKSE::log::trace("onActorEnterBleedout PlayerVictim disabled - skipped");
-                return;
-            }
-        } else {
-            if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
-                SKSE::log::trace("onActorEnterBleedout NvN disabled - skipped");
                 return;
             }
         }
@@ -60,6 +71,10 @@ namespace SexLabDefeat {
                                  actor->GetName());
                 return;
             }
+            if (target->getState() != DefeatActorStates::ACTIVE) {
+                SKSE::log::trace("onHitHandler target not in Active state - skipped");
+                return;
+            }
             if (!_defeatActorManager->isInCombat(target)) {
                 SKSE::log::trace("onActorEnterBleedout - <{:08X}> not in combat - skipped", target->getTESFormId());
                 return;
@@ -77,52 +92,68 @@ namespace SexLabDefeat {
                 SKSE::log::trace("onActorEnterBleedout - KD Not Allowed - skipped");
                 return;
             }
-            if (mcmConfig->Config.NVNKDtype->get() < 2) {
-                SKSE::log::trace("onActorEnterBleedout - NVNKDtype disabled for HIT - skipped");
-                return;
-            }
             if (_defeatActorManager->hasKeywordString(target, _defeatManager->Forms.KeywordId.DefeatActive)) {
                 SKSE::log::trace("onActorEnterBleedout - target is DefeatActive - skipped");
                 return;
             }
 
-            if (target->isFollower() && !mcmConfig->Config.AllowCvic->get()) {
-                SKSE::log::trace("onActorEnterBleedout - Cvic not allowed - skipped");
-                return;
-            }
+            if (_defeatManager->getConfig()->Config.OnOffNVN->get()) {
+                // NvN
+                if (mcmConfig->Config.NVNKDtype->get() < 2) {
+                    SKSE::log::trace("onActorEnterBleedout - NVNKDtype disabled for HIT - skipped");
+                    return;
+                }
 
-            auto aggressor = _defeatActorManager->getSuitableAggressor(target);
-            if (aggressor) {
-                if (target->isFollower()) {
-                    if (mcmConfig->Config.AllowCvic->get()) {
-                        SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown by NPC <{:08X}>",
-                                         target->getTESFormId(), aggressor->getTESFormId());
-                        result = HitResult::KNOCKDOWN;
-                    }
-                } else {
-                    if (aggressor->isFollower()) {
-                        if (mcmConfig->Config.AllowCagg->get()) {
-                            SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by Follower <{:08X}>",
+                if (target->isFollower() && !mcmConfig->Config.AllowCvic->get()) {
+                    SKSE::log::trace("onActorEnterBleedout - Cvic not allowed - skipped");
+                    return;
+                }
+
+                auto aggressor = _defeatActorManager->getSuitableAggressor(target);
+                if (aggressor) {
+                    if (target->isFollower()) {
+                        if (mcmConfig->Config.AllowCvic->get()) {
+                            SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown by NPC <{:08X}>",
                                              target->getTESFormId(), aggressor->getTESFormId());
                             result = HitResult::KNOCKDOWN;
                         }
                     } else {
-                        SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by NPC <{:08X}>",
-                                         target->getTESFormId(), aggressor->getTESFormId());
+                        if (aggressor->isFollower()) {
+                            if (mcmConfig->Config.AllowCagg->get()) {
+                                SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by Follower <{:08X}>",
+                                                 target->getTESFormId(), aggressor->getTESFormId());
+                                result = HitResult::KNOCKDOWN;
+                            }
+                        } else {
+                            SKSE::log::trace("onActorEnterBleedout NPC <{:08X}> Knockdown by NPC <{:08X}>",
+                                             target->getTESFormId(), aggressor->getTESFormId());
+                            result = HitResult::KNOCKDOWN;
+                        }
+                    }
+                } else {
+                    if (target->isFollower()) {
+                        SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown without Agressor",
+                                         target->getTESFormId());
                         result = HitResult::KNOCKDOWN;
                     }
                 }
-            } else {
-                if (target->isFollower()) {
-                    SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown without Agressor",
-                                     target->getTESFormId());
-                    result = HitResult::KNOCKDOWN;
-                }
-            }
 
-            if (result != HitResult::SKIP) {
-                target->setHitImmunityFor(10000ms);
-                _defeatActorManager->npcKnockDownEvent(target, aggressor, result, true);
+                if (result != HitResult::SKIP) {
+                    target->setHitImmunityFor(10000ms);
+                    target->setState(DefeatActorStates::KNONKOUT_STATE);
+                    target->setStateTransition(true);
+                    _defeatActorManager->npcKnockDownEvent(target, aggressor, result, true, true);
+                }
+            } else {
+                if (player->getState() != DefeatActorStates::ACTIVE && target->isFollower()) {
+                    // Follower knock
+                    SKSE::log::trace("onActorEnterBleedout Follower <{:08X}> Knockdown", target->getTESFormId());
+                    target->setState(DefeatActorStates::KNONKOUT_STATE);
+                    target->setStateTransition(true);
+                    _defeatActorManager->npcKnockDownEvent(target, nullptr, HitResult::KNOCKDOWN, true, false);
+                } else {
+                    SKSE::log::trace("onActorEnterBleedout NvN disabled - NvN skipped");
+                }
             }
         }
     }
@@ -134,18 +165,42 @@ namespace SexLabDefeat {
 
         auto aggr_actor = event.aggressor->As<RE::Actor>();
         auto target_actor = event.target->As<RE::Actor>();
-
-        if (!_defeatActorManager->validForAggressorRole(aggr_actor) ||
-            !_defeatActorManager->validForVictrimRole(target_actor)) {
+        if (!target_actor || !aggr_actor) {
             return;
         }
 
-        auto player = _defeatActorManager->getPlayer(target_actor);
+        auto player = _defeatActorManager->getPlayer(nullptr);
 
         auto isPlayerTarget = player->isSame(target_actor);
         auto isPlayerAggressor = player->isSame(aggr_actor);
         DefeatActorType target = nullptr;
         DefeatActorType source = nullptr;
+        if (isPlayerTarget) {
+            target = player;
+            source = _defeatActorManager->getDefeatActor(aggr_actor);
+        } else {
+            target = _defeatActorManager->getDefeatActor(target_actor);
+            if (!isPlayerAggressor) {
+                source = _defeatActorManager->getDefeatActor(aggr_actor);
+            } else {
+                source = player;
+            }
+        }
+
+        if (target->inSexLabScene()) {
+            onSexLabSceneInterrupt(target, source, true);
+            return;
+        }
+
+        if (target->hasHitImmunity()) {
+            SKSE::log::trace("onHitHandler Hit Immunity - skipped");
+            return;
+        }
+
+        if (!_defeatActorManager->validForAggressorRole(aggr_actor) ||
+            !_defeatActorManager->validForVictrimRole(target_actor)) {
+            return;
+        }
 
         if (isPlayerTarget) {
             // npc -> player
@@ -157,15 +212,9 @@ namespace SexLabDefeat {
                 SKSE::log::trace("onHitHandler PlayerVictim not valid Player for victim role - skipped");
                 return;
             }
-            target = player;
         } else {
             if (!isPlayerAggressor) {
                 // npc -> npc
-                if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
-                    SKSE::log::trace("onHitHandler NvN disabled - skipped");
-                    return;
-                }
-                target = _defeatActorManager->getDefeatActor(target_actor);
             } else {
                 // player -> npc
                 if (!_defeatManager->getConfig()->Config.OnOffPlayerAggressor->get()) {
@@ -176,17 +225,11 @@ namespace SexLabDefeat {
             }
         }
 
-        if (target->hasHitImmunity()) {
-            SKSE::log::trace("onHitHandler Hit Immunity - skipped");
-            return;
-        }
-
         if (target->getState() != DefeatActorStates::ACTIVE) {
             SKSE::log::trace("onHitHandler target not in Active state - skipped");
             return;
         }
 
-        source = _defeatActorManager->getDefeatActor(aggr_actor);
         if (source->isIgnored()) {
             SKSE::log::trace("onHitHandler Hit from <{:08X}:{}> rejected by Ignore Conditions",
                              event.aggressor->GetFormID(), event.aggressor->GetName());
@@ -268,6 +311,26 @@ namespace SexLabDefeat {
             SKSE::log::trace("onNvNHitHandler - Distance is too big - skipped");
             return;
         }
+
+        if (!_defeatManager->getConfig()->Config.OnOffNVN->get()) {
+            // Follower
+            auto player = _defeatActorManager->getPlayer(nullptr);
+            if (player->getState() != DefeatActorStates::ACTIVE && defActor->isFollower()) {
+                if (randomChanse(mcmConfig->Config.COHFollower->get())) {
+                    const auto health =
+                        _defeatActorManager->getActorValuePercentage(defActor, RE::ActorValue::kHealth) * 100;
+                    if (health <= mcmConfig->Config.ThresholdFollower->get()) {
+                        SKSE::log::trace("Follower <{:08X}> Knockdown", defActor->getTESFormId());
+                        event.target->setState(DefeatActorStates::KNONKOUT_STATE);
+                        event.target->setStateTransition(true);
+                        _defeatActorManager->npcKnockDownEvent(event.target, event.aggressor, HitResult::KNOCKDOWN,
+                                                               false, false);
+                    }
+                }
+            }
+            return;
+        }
+
         if (mcmConfig->Config.NVNKDtype->get() > 2) {
             SKSE::log::trace("onNvNHitHandler - NVNKDtype disabled for HIT - skipped");
             return;
@@ -312,9 +375,15 @@ namespace SexLabDefeat {
 
         if (result != HitResult::SKIP) {
             defActor->setHitImmunityFor(10000ms);
-            _defeatActorManager->npcKnockDownEvent(event.target, event.aggressor, result);
+            event.target->setState(DefeatActorStates::KNONKOUT_STATE);
+            event.target->setStateTransition(true);
+            _defeatActorManager->npcKnockDownEvent(event.target, event.aggressor, result, false, true);
         }
     }
+
+    void DefeatCombatManager::onSexLabSceneInterrupt(DefeatActorType target, DefeatActorType source, bool isHit) {
+        _defeatActorManager->sexLabSceneInterrupt(target, source, isHit);
+    }    
 
     void DefeatCombatManager::calculatePlayerHit(HitEventType event) {
         SKSE::log::trace("calculatePlayerHit for <{:08X}> from <{:08X}>", event.target->getTESFormId(),
@@ -333,7 +402,18 @@ namespace SexLabDefeat {
                         }
                     }
                 }
-                event.target->setState(DefeatActorStates::DISACTIVE);
+                switch (result) {
+                    case SexLabDefeat::KNOCKOUT:
+                        event.target->setState(DefeatActorStates::KNONKOUT_STATE);
+                        break;
+                    case SexLabDefeat::STANDING_STRUGGLE:
+                        event.target->setState(DefeatActorStates::STANDING_STRUGGLE_STATE);
+                        break;
+                    default: // SexLabDefeat::KNOCKDOWN
+                        event.target->setState(DefeatActorStates::KNONKDOWN_STATE);
+                        break;
+                }
+                event.target->setStateTransition(true);
 
                 _defeatActorManager->playerKnockDownEvent(event.target, event.aggressor, result);
             } else {

@@ -139,6 +139,15 @@ namespace SexLabDefeat {
 
         bool registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source, RE::FormID projectile) override;
 
+        void setStateTransition(bool val) override {
+            UniqueSpinLock lock(*this);
+            if (val) {
+                _data.flags.set(DefeatActorStateFlags::STATE_TRANSITION);
+            } else {
+                _data.flags.reset(DefeatActorStateFlags::STATE_TRANSITION);
+            }
+        }
+
         bool isSheduledDeplateDynamicDefeat() override { return false; }
         bool sheduleDeplateDynamicDefeat() override { return false; }
         void stopDeplateDynamicDefeat() override {}

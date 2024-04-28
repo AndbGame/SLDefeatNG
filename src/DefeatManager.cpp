@@ -1,6 +1,7 @@
 #include "DefeatManager.h"
 
 namespace {
+    using SexLabDefeat::DefeatActorStates;
 
     SexLabDefeat::DefeatManager* _defeatManager;
 
@@ -30,13 +31,53 @@ namespace {
         SKSE::log::trace("Papyrus call setActorState(<{:08X}:{}>, {})", actor->GetFormID(), actor->GetName(), state);
 
         std::transform(state.begin(), state.end(), state.begin(), ::toupper);
-        SexLabDefeat::DefeatActorStates _state = SexLabDefeat::DefeatActorStates::NONE;
+        DefeatActorStates _state = DefeatActorStates::NONE;
+        //actor->GetActorRuntimeData().boolFlags.reset(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
         if (state.compare("ACTIVE") == 0) {
-            _state = SexLabDefeat::DefeatActorStates::ACTIVE;
+            _state = DefeatActorStates::ACTIVE;
+        } else if (state.compare("ESCAPE") == 0) {
+            _state = DefeatActorStates::ESCAPE_STATE;
+        } else if (state.compare("EXHAUSTED") == 0) {
+            _state = DefeatActorStates::EXHAUSTED_STATE;
+        } else if (state.compare("KNOCKDOWN") == 0) {
+            _state = DefeatActorStates::KNONKDOWN_STATE;
+            //actor->GetActorRuntimeData().boolFlags.set(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
+        } else if (state.compare("KNOCKOUT") == 0) {
+            _state = DefeatActorStates::KNONKOUT_STATE;
+        } else if (state.compare("STANDING_STRUGGLE") == 0) {
+            _state = DefeatActorStates::STANDING_STRUGGLE_STATE;
+        } else if (state.compare("SURRENDER") == 0) {
+            _state = DefeatActorStates::SURRENDER_STATE;
+        } else if (state.compare("TRAUMA") == 0) {
+            _state = DefeatActorStates::TRAUMA_STATE;
+        } else if (state.compare("YIELD") == 0) {
+            _state = DefeatActorStates::YIELD_STATE;
+        } else if (state.compare("TIED") == 0) {
+            _state = DefeatActorStates::TIED_STATE;
         } else if (state.compare("DISACTIVE") == 0) {
-            _state = SexLabDefeat::DefeatActorStates::DISACTIVE;
+            _state = DefeatActorStates::DISACTIVE;
+        } else {
+            SKSE::log::error("Papyrus call setActorState(<{:08X}:{}>, {}). ERROR: Unknown state. State is active",
+                             actor->GetFormID(), actor->GetName(),
+                             state);
+            _state = DefeatActorStates::ACTIVE;
         }
-        _defeatManager->setActorState(actor, _state);
+        _defeatManager->setActorState(actor, _state, false);
+    }
+
+    inline std::string getActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        if (actor == nullptr) {
+            SKSE::log::error("Papyrus call getActorState() on NULL actor -> None");
+            return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[SexLabDefeat::DefeatActorStates::NONE];
+        }
+
+        SexLabDefeat::DefeatActorStates _state = SexLabDefeat::DefeatActorStates::NONE;
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
+        if (defeatActor) {
+            _state = defeatActor->getState();
+        }
+        SKSE::log::trace("Papyrus call getActorState(<{:08X}:{}>) -> {}", actor->GetFormID(), actor->GetName(), _state);
+        return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[_state];
     }
 
     inline RE::Actor* getLastHitAggressor(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
@@ -58,6 +99,7 @@ namespace {
 
         REGISTERPAPYRUSFUNC(responseActorExtraData, true)
         REGISTERPAPYRUSFUNC(setActorState, true)
+        REGISTERPAPYRUSFUNC(getActorState, true)
         REGISTERPAPYRUSFUNC(getLastHitAggressor, true)
 
 #undef REGISTERPAPYRUSFUNC
@@ -66,6 +108,21 @@ namespace {
 }
 
 namespace SexLabDefeat {
+
+    std::map<DefeatActorStates, std::string> DefeatManager::DefeatActorStatesStrings = {
+        {DefeatActorStates::NONE, "None"},
+        {DefeatActorStates::ACTIVE, ""},
+        {DefeatActorStates::DISACTIVE, "Disactive"},
+        {DefeatActorStates::KNONKOUT_STATE, "Knockout"},
+        {DefeatActorStates::STANDING_STRUGGLE_STATE, "Standing_struggle"},
+        {DefeatActorStates::KNONKDOWN_STATE, "Knockdown"},
+        {DefeatActorStates::TRAUMA_STATE, "Trauma"},
+        {DefeatActorStates::EXHAUSTED_STATE, "Exhausted"},
+        {DefeatActorStates::SURRENDER_STATE, "Surrender"},
+        {DefeatActorStates::YIELD_STATE, "Yield"},
+        {DefeatActorStates::ESCAPE_STATE, "Escape"},
+        {DefeatActorStates::TIED_STATE, "Tied"},
+    };
 
     DefeatManager::DefeatManager(DefeatConfig* defeatConfig) {
         setGameState(DefeatManager::GameState::NONE);
@@ -168,9 +225,10 @@ namespace SexLabDefeat {
         LOAD_FORM(Forms.DefeatMCMQst, RE::TESQuest, 0x06D3D4, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatRessourcesQst, RE::TESQuest, 0x04B8D1, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatPlayerQTE, RE::TESQuest, 0x0B5F7C, "SexLabDefeat.esp");
-        LOAD_FORM(Forms.Faction.DefeatFaction, RE::TESFaction, 0x001D92, "SexLabDefeat.esm");
+        LOAD_FORM(Forms.Faction.DefeatFaction, RE::TESFaction, 0x001D92, "SexLabDefeat.esp");
 
         LOAD_FORM(Forms.SexLabQuestFramework, RE::TESQuest, 0x000D62, "SexLab.esm");
+        LOAD_FORM(Forms.Faction.SexLabAnimatingFaction, RE::TESFaction, 0x00E50F, "SexLab.esm");
 
         LOAD_FORM(Forms.SatisfiedSPL, RE::SpellItem, 0x0D6FF0, "SexLabDefeat.esp");
 
@@ -221,10 +279,11 @@ namespace SexLabDefeat {
         return _defeatWidget;
     }
 
-    void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActorStates state) {
+    void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActorStates state, bool isTransition) {
         auto defeatActor = getActorManager()->getDefeatActor(target_actor);
-        if (state != DefeatActorStates::NONE) {
-            defeatActor->setState(state);
+        defeatActor->setState(state);
+        defeatActor->setStateTransition(isTransition);
+        if (state != DefeatActorStates::ACTIVE) {
             defeatActor->resetDynamicDefeat();
             if (defeatActor->isPlayer()) {
                 _defeatCombatManager->interruptPlayerDeplateDynamicDefeat();
