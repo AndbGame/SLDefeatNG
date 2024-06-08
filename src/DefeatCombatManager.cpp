@@ -13,6 +13,11 @@ namespace SexLabDefeat {
     void DefeatCombatManager::onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) {
         auto sourceActor = _defeatActorManager->getDefeatActor(actor);
 
+        if (!sourceActor->inCombat()) {
+            sourceActor->clearLastHitAggressors();
+        }
+        sourceActor->setInCombat();
+
         if (sourceActor->inSexLabScene()) {
             onSexLabSceneInterrupt(sourceActor, nullptr, false);
         }
@@ -32,6 +37,11 @@ namespace SexLabDefeat {
                     targetActor, [&] {}, 10s);
             }
         }
+    }
+
+    void DefeatCombatManager::onActorEnteredToNonCombatState(RE::Actor* actor) {
+        auto sourceActor = _defeatActorManager->getDefeatActor(actor);
+        sourceActor->setNotInCombat();
     }
 
     void DefeatCombatManager::onActorEnterBleedout(RE::Actor* actor) {

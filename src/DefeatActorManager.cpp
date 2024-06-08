@@ -261,7 +261,9 @@ namespace SexLabDefeat {
             _sexLabInterruptExpirationsLock.spinUnlock();
 
             if (target->IsPlayerRef()) {
-                    return;  // TODO
+                if (!isHit) {
+                    return;
+                }
             }
             auto mcmConfig = _defeatManager->getConfig();
             if (mcmConfig->Config.OnOffPlayerVictim->get() && !mcmConfig->Config.OnOffNVN->get()) {
@@ -302,11 +304,11 @@ namespace SexLabDefeat {
 
     
 
-        static OnBSAnimationGraphEventHandler* instanse;
+    static OnBSAnimationGraphEventHandler* instanse;
 
-    static OnBSAnimationGraphEventHandler* getInstance() {
+    static OnBSAnimationGraphEventHandler* getInstance(IDefeatManager* defeatManager) {
         if (!instanse) {
-            instanse = new OnBSAnimationGraphEventHandler();
+            instanse = new OnBSAnimationGraphEventHandler(defeatManager);
         }
         return instanse;
     }
@@ -335,7 +337,13 @@ namespace SexLabDefeat {
             SKSE::log::trace("npcKnockDownEvent - {}: <{:08X}>", eventStr, target->getTESFormId());
         }
 
-        //target->getTESActor()->AddAnimationGraphEventSink(getInstance());
+        // Attempt to fix auto bleedout recovery
+        if (isBleedout) {
+            SKSE::log::trace("Set NoBleedoutRecovery for <{:08X}>.", target->getTESFormId());
+            target->getTESActor()->GetActorRuntimeData().boolFlags.set(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
+        }
+
+        //target->getTESActor()->AddAnimationGraphEventSink(getInstance(_defeatManager));
         if (PapyrusInterface::DispatchStaticCall("defeat_skse_api", "npcKnockDownEvent", callback,
                                                  std::move(targetActor),
                                                  std::move(aggressorActor), std::move(eventStr),

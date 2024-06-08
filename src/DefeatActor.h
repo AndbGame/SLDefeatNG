@@ -45,11 +45,25 @@ namespace SexLabDefeat {
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             UniqueSpinLock lock(*this);
             _data.lastHitAggressor = lastHitAggressor->getTESFormId();
+            _data.lastHitAggressors[lastHitAggressor->getTESFormId()] = clock::now();
+        }
+        void clearLastHitAggressors() override {
+            UniqueSpinLock lock(*this);
+            _data.lastHitAggressor = 0;
+            _data.lastHitAggressors.clear();
         }
         DefeatActorType getLastHitAggressor() override {
             UniqueSpinLock lock(*this);
             return getActorManager()->getDefeatActor(_data.lastHitAggressor);
         }
+        void setInCombat() override {
+            UniqueSpinLock lock(*this);
+            _data.inCombat = true;
+        };
+        void setNotInCombat() override {
+            UniqueSpinLock lock(*this);
+            _data.inCombat = false;
+        };
 
         float incrementDynamicDefeat(float val) override {
             UniqueSpinLock lock(*this);

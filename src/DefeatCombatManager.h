@@ -18,6 +18,7 @@ namespace SexLabDefeat {
         IDefeatManager* getDefeatManager() { return _defeatManager; };
 
         void onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) override;
+        void onActorEnteredToNonCombatState(RE::Actor* actor) override;
         void onActorEnterBleedout(RE::Actor* target_actor) override;
         void onHitHandler(RawHitEvent event) override;
         void onSexLabSceneInterrupt(DefeatActorType target, DefeatActorType source, bool isHit = false);

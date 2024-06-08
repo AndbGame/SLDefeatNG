@@ -220,6 +220,7 @@ namespace SexLabDefeat {
         
         LOAD_FORM(Forms.Faction.CurrentFollowerFaction, RE::TESFaction, 0x05C84E, "Skyrim.esm");
         LOAD_FORM(Forms.Faction.CurrentHireling, RE::TESFaction, 0x0BD738, "Skyrim.esm");
+        LOAD_FORM(Forms.Idle.BleedoutStart, RE::TESIdleForm,     0x013ECC, "Skyrim.esm");
 
         LOAD_FORM(Forms.DefeatPlayerQST, RE::TESQuest, 0x000D62, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatMCMQst, RE::TESQuest, 0x06D3D4, "SexLabDefeat.esp");

@@ -79,25 +79,43 @@ namespace SexLabDefeat {
     
     class OnBSAnimationGraphEventHandler : public RE::BSTEventSink<RE::BSAnimationGraphEvent> {
     public:
-        OnBSAnimationGraphEventHandler(){};
+        OnBSAnimationGraphEventHandler(IDefeatManager* defeatManager) { _defeatManager = defeatManager; };
         ~OnBSAnimationGraphEventHandler() = default;
+        SexLabDefeat::IDefeatManager* _defeatManager;
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::BSAnimationGraphEvent* a_event,
                                                       RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
-            if (!a_event || a_event->holder->IsNot(RE::FormType::ActorCharacter))
+
+            if (!a_event || a_event->holder->IsNot(RE::FormType::ActorCharacter)) {
                 return RE::BSEventNotifyControl::kContinue;
-
+            }
             auto source = const_cast<RE::Actor*>(a_event->holder->As<RE::Actor>());
-
-            SKSE::log::trace("OnBSAnimationGraphEventHandler for <{:08X}:{}> from <{}>", source->GetFormID(),
-                             source->GetName(), a_event->tag);
-
+            SKSE::log::trace("OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>",
+                             source->GetFormID(), source->GetName(), a_event->tag, a_event->payload.data());
             // constexpr std::array events{ "MTState", "IdleStop", "JumpLandEnd" };
-            if (a_event->tag == "MTState") {
-                if (auto process = source->GetActorRuntimeData().currentProcess) {
-                    //process->PlayIdle(source, GameForms::BleedoutStart, source);
-                } else {
-                    //source->NotifyAnimationGraph("BleedoutStart");
+            auto defActor = _defeatManager->getActorManager()->getDefeatActor(source);
+            if (defActor && defActor->getState() == SexLabDefeat::DefeatActorStates::KNONKDOWN_STATE) {
+            
+                if (a_event->tag == "MTState1111") {
+                    SKSE::log::trace(
+                        "OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>; MTState; play Bleedout",
+                        source->GetFormID(), source->GetName(), a_event->tag, a_event->payload);
+                    if (auto process = source->GetActorRuntimeData().currentProcess) {
+                        process->PlayIdle(source, _defeatManager->Forms.Idle.BleedoutStart, source);
+                    } else {
+                        source->NotifyAnimationGraph("BleedoutStart");
+                    }
+                }
+                if (a_event->tag == "BleedoutStop") {
+                    SKSE::log::trace(
+                        "OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>; BleedoutStop; play "
+                        "Bleedout",
+                        source->GetFormID(), source->GetName(), a_event->tag, a_event->payload);
+                    if (auto process = source->GetActorRuntimeData().currentProcess) {
+                        process->PlayIdle(source, _defeatManager->Forms.Idle.BleedoutStart, source);
+                    } else {
+                        source->NotifyAnimationGraph("BleedoutStart");
+                    }
                 }
             }
             return RE::BSEventNotifyControl::kContinue;

@@ -10,22 +10,59 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESCombatEvent* a_event,
             RE::BSTEventSource<RE::TESCombatEvent>* a_eventSource) {
-            if (a_event->actor != nullptr && a_event->newState.any(RE::ACTOR_COMBAT_STATE::kCombat)) {
+            if (a_event->actor != nullptr) {
                 auto actor = a_event->actor->As<RE::Actor>();
-                RE::Actor* target_actor = nullptr;
-                if (a_event->targetActor != nullptr) {
-                    target_actor = a_event->targetActor->As<RE::Actor>();
-                }
                 if (actor != nullptr) {
-                    if (target_actor) {
-                        SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state with <{:08X}:{}>",
-                                        actor->GetFormID(), actor->GetName(), target_actor->GetFormID(),
-                                        target_actor->GetName());
-                    } else {
-                        SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state",
-                                        actor->GetFormID(), actor->GetName());
+                    if (a_event->newState.get() == RE::ACTOR_COMBAT_STATE::kCombat) {
+                        RE::Actor* target_actor = nullptr;
+                        if (a_event->targetActor != nullptr) {
+                            target_actor = a_event->targetActor->As<RE::Actor>();
+                        }
+                        if (target_actor) {
+                            SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state with <{:08X}:{}>",
+                                            actor->GetFormID(), actor->GetName(), target_actor->GetFormID(),
+                                            target_actor->GetName());
+                        } else {
+                            SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in combat state", actor->GetFormID(),
+                                            actor->GetName());
+                        }
+                        _defeatManager->getCombatManager()->onActorEnteredToCombatState(actor, target_actor);
                     }
-                    _defeatManager->getCombatManager()->onActorEnteredToCombatState(actor, target_actor);
+                    if (a_event->newState.get() == RE::ACTOR_COMBAT_STATE::kNone) {
+                        SKSE::log::info("OnTESCombatEventHandler <{:08X}:{}> in none state", actor->GetFormID(),
+                                        actor->GetName());
+                        _defeatManager->getCombatManager()->onActorEnteredToNonCombatState(actor);
+                    }
+                }
+            }
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    };
+
+    class OnBSAnimationGraphEvent : public RE::BSTEventSink<RE::BSAnimationGraphEvent> {
+    public:
+        OnBSAnimationGraphEvent(SexLabDefeat::DefeatManager* defeatManager) { _defeatManager = defeatManager; };
+        ~OnBSAnimationGraphEvent() = default;
+        SexLabDefeat::DefeatManager* _defeatManager;
+
+        virtual RE::BSEventNotifyControl ProcessEvent(const RE::BSAnimationGraphEvent* a_event,
+                                                      RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
+
+            if (!a_event || a_event->holder->IsNot(RE::FormType::ActorCharacter)) {
+                return RE::BSEventNotifyControl::kContinue;
+            }
+
+            auto source = const_cast<RE::Actor*>(a_event->holder->As<RE::Actor>());
+            // constexpr std::array events{ "MTState", "IdleStop", "JumpLandEnd" };
+            auto defActor = _defeatManager->getActorManager()->getDefeatActor(source);
+            if (defActor && defActor->getState() == SexLabDefeat::DefeatActorStates::KNONKDOWN_STATE &&
+                a_event->tag == "MTState") {
+                SKSE::log::trace("OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>; play Bleedout", source->GetFormID(),
+                                 source->GetName(), a_event->tag, a_event->payload);
+                if (auto process = source->GetActorRuntimeData().currentProcess) {
+                    process->PlayIdle(source, _defeatManager->Forms.Idle.BleedoutStart, source);
+                } else {
+                    source->NotifyAnimationGraph("BleedoutStart");
                 }
             }
             return RE::BSEventNotifyControl::kContinue;

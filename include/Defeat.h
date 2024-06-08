@@ -83,6 +83,8 @@ namespace SexLabDefeat {
         RE::FormID TESFormId = 0;
         clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
         RE::FormID lastHitAggressor = 0;
+        std::map<RE::FormID, clock::time_point> lastHitAggressors = {};
+        bool inCombat = false;
         bool isSurrender = false;
         DefeatActorStates state = DefeatActorStates::ACTIVE;
         SKSE::stl::enumeration<DefeatActorStateFlags, std::uint8_t> flags = DefeatActorStateFlags::NONE;
@@ -363,12 +365,19 @@ namespace SexLabDefeat {
         virtual bool isPlayer() { return false; };
         virtual bool isSurrender() { return _data.isSurrender; }
 
+        virtual bool inCombat() { return _data.inCombat; }
+        virtual void setInCombat() = 0;
+        virtual void setNotInCombat() = 0;
+
+        bool IsDamageImmune() {}
+
         bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
         virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
 
         RE::FormID getLastHitAggressorFormId() const { return _data.lastHitAggressor; }
         virtual DefeatActorType getLastHitAggressor() = 0;
         virtual void setLastHitAggressor(DefeatActorType lastHitAggressor) = 0;
+        virtual void clearLastHitAggressors() = 0;
 
         DefeatActorStates getState() const { return _data.state; };
         virtual void setState(DefeatActorStates state) = 0;
@@ -456,6 +465,9 @@ namespace SexLabDefeat {
         void setLastHitAggressor(DefeatActorType lastHitAggressor) override {
             _impl->setLastHitAggressor(lastHitAggressor);
         }
+        void clearLastHitAggressors() override { _impl->clearLastHitAggressors(); }
+        void setInCombat() override { _impl->setInCombat(); };
+        void setNotInCombat() override { _impl->setNotInCombat(); };
         DefeatActorType getLastHitAggressor() override;
         float incrementDynamicDefeat(float val) override {
             return _data.dynamicDefeat = _impl->incrementDynamicDefeat(val); 
@@ -581,6 +593,7 @@ namespace SexLabDefeat {
     class IDefeatCombatManager {
     public:
         virtual void onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) = 0;
+        virtual void onActorEnteredToNonCombatState(RE::Actor* actor) = 0;
         virtual void onHitHandler(RawHitEvent event) = 0;
         virtual void onActorEnterBleedout(RE::Actor* target_actor) = 0;
     };
