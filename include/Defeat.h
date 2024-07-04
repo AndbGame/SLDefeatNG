@@ -93,7 +93,6 @@ namespace SexLabDefeat {
     struct DefeatActorDataType {
         RE::FormID TESFormId = 0;
         clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
-        RE::FormID lastHitAggressor = 0;
         LastHitAggressorsType lastHitAggressors = {};
         bool inCombat = false;
         bool isSurrender = false;
@@ -389,8 +388,6 @@ namespace SexLabDefeat {
         bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
         virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
 
-        RE::FormID getLastHitAggressorFormId() const { return _data.lastHitAggressor; }
-        virtual DefeatActorType getLastHitAggressor() = 0;
         LastHitAggressorsType getLastHitAggressors() const { return _data.lastHitAggressors; };
         virtual void setLastHitAggressor(DefeatActorType lastHitAggressor) = 0;
         virtual void clearLastHitAggressors() = 0;

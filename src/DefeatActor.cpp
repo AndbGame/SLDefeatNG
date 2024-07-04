@@ -113,10 +113,6 @@ namespace SexLabDefeat {
     bool DefeatActor::isIgnored() { 
         return getActorManager()->isIgnored(_actor); }
 
-    DefeatActorType DefeatActor::getLastHitAggressor() {
-        return getActorManager()->getDefeatActor(_data.lastHitAggressor);
-    }
-
     bool DefeatActor::isEvilFaction() {
         return getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.EvilFactionList);
     }
@@ -141,13 +137,7 @@ namespace SexLabDefeat {
     
     void DefeatActorImpl::setLastHitAggressor(DefeatActorType lastHitAggressor) {
         UniqueSpinLock lock(*this);
-        _data.lastHitAggressor = lastHitAggressor->getTESFormId();
         _data.lastHitAggressors[lastHitAggressor->getTESFormId()] = clock::now();
-    }
-
-    DefeatActorType DefeatActorImpl::getLastHitAggressor() {
-        UniqueSpinLock lock(*this);
-        return getActorManager()->getDefeatActor(_data.lastHitAggressor);
     }
 
     void DefeatActorImpl::requestExtraData(DefeatActorType actor, std::function<void()> callback,
