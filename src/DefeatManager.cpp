@@ -31,7 +31,7 @@ namespace {
         SKSE::log::trace("Papyrus call setActorState(<{:08X}:{}>, {})", actor->GetFormID(), actor->GetName(), state);
 
         std::transform(state.begin(), state.end(), state.begin(), ::toupper);
-        DefeatActorStates _state = DefeatActorStates::NONE;
+        DefeatActorStates _state = DefeatActorStates::ACTIVE;
         //actor->GetActorRuntimeData().boolFlags.reset(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
         if (state.compare("ACTIVE") == 0) {
             _state = DefeatActorStates::ACTIVE;
@@ -60,24 +60,27 @@ namespace {
             SKSE::log::error("Papyrus call setActorState(<{:08X}:{}>, {}). ERROR: Unknown state. State is active",
                              actor->GetFormID(), actor->GetName(),
                              state);
-            _state = DefeatActorStates::ACTIVE;
         }
         _defeatManager->setActorState(actor, _state, false);
     }
 
     inline std::string getActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
         if (actor == nullptr) {
-            SKSE::log::error("Papyrus call getActorState() on NULL actor -> None");
-            return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[SexLabDefeat::DefeatActorStates::NONE];
+            SKSE::log::error("Papyrus call getActorState() on NULL actor -> DISACTIVE");
+            return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[SexLabDefeat::DefeatActorStates::DISACTIVE];
         }
 
-        SexLabDefeat::DefeatActorStates _state = SexLabDefeat::DefeatActorStates::NONE;
+        SexLabDefeat::DefeatActorStates _state = SexLabDefeat::DefeatActorStates::DISACTIVE;
         auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
         if (defeatActor) {
             _state = defeatActor->getState();
         }
         SKSE::log::trace("Papyrus call getActorState(<{:08X}:{}>) -> {}", actor->GetFormID(), actor->GetName(), _state);
-        return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[_state];
+        auto stateStringIt = SexLabDefeat::DefeatManager::DefeatActorStatesStrings.find(_state);
+        if (stateStringIt != SexLabDefeat::DefeatManager::DefeatActorStatesStrings.end()) {
+            return stateStringIt->second;
+        }
+        return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[SexLabDefeat::DefeatActorStates::DISACTIVE];
     }
 
     inline RE::Actor* getLastHitAggressor(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
@@ -130,7 +133,6 @@ namespace {
 namespace SexLabDefeat {
 
     std::map<DefeatActorStates, std::string> DefeatManager::DefeatActorStatesStrings = {
-        {DefeatActorStates::NONE, "None"},
         {DefeatActorStates::ACTIVE, ""},
         {DefeatActorStates::DISACTIVE, "Disactive"},
         {DefeatActorStates::VICTIM_KNONKOUT_STATE, "Knockout"},

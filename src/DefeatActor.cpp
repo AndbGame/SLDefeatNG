@@ -133,7 +133,7 @@ namespace SexLabDefeat {
     
     void DefeatActorImpl::setLastHitAggressor(DefeatActorType lastHitAggressor) {
         UniqueSpinLock lock(*this);
-        _data.lastHitAggressors[lastHitAggressor->getTESFormId()] = clock::now();
+        _data.lastHitAggressors[lastHitAggressor->getTESFormId()] = RE::Calendar::GetSingleton()->GetDaysPassed();
     }
 
     void DefeatActorImpl::requestExtraData(DefeatActorType actor, std::function<void()> callback,

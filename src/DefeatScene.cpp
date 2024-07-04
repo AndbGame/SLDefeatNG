@@ -48,7 +48,7 @@ namespace SexLabDefeat {
 
         struct aggressorData {
             RE::FormID formID = {};
-            clock::time_point lastHit = {};
+            float lastHit = {};
             float dist = {};
             DefeatActorType actor = {};
         };
@@ -224,7 +224,7 @@ namespace SexLabDefeat {
     }
 
     DefeatSceneResult DefeatRapeScene::selectAgressor(DefeatActorType agg) {
-        if (agg->tryExchangeState(DefeatActorStates::ACTIVE, DefeatActorStates::IN_SCENE_STATE)) {
+        if (agg->tryExchangeState(DefeatActorStates::ACTIVE, DefeatActorStates::ASSAULT_STATE)) {
             return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::SUCCESS);
         }
         return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::AGGRESSOR_NOT_READY);

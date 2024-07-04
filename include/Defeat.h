@@ -43,7 +43,7 @@ namespace SexLabDefeat {
     using DefeatActorType = std::shared_ptr<DefeatActor>;
     using IDefeatActorType = std::shared_ptr<IDefeatActor>;
     using DefeatPlayerActorType = std::shared_ptr<DefeatPlayerActor>;
-    using LastHitAggressorsType = std::map<RE::FormID, clock::time_point>;
+    using LastHitAggressorsType = std::map<RE::FormID, float>;
 
     class ActorExtraData {
     public:
@@ -56,11 +56,8 @@ namespace SexLabDefeat {
     };
 
     enum DefeatActorStates {
-        NONE,
         ACTIVE,
         DISACTIVE,
-
-        IN_SCENE_STATE,
 
         VICTIM_KNONKOUT_STATE,
         VICTIM_STANDING_STRUGGLE_STATE,
@@ -73,9 +70,6 @@ namespace SexLabDefeat {
         VICTIM_TIED_STATE,
 
         ASSAULT_STATE,
-        ASSAULT_RAPE_STATE,
-        ASSAULT_ROB_STATE,
-        ASSAULT_KILL_STATE,
     };
     int format_as(DefeatActorStates f);
 
