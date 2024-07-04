@@ -4,6 +4,9 @@
 #include "src/DefeatManager.h"
 #include "src/DefeatHooks.h"
 
+int SexLabDefeat::format_as(SexLabDefeat::DefeatActorStates f) { return fmt::underlying(f); }
+int SexLabDefeat::format_as(SexLabDefeat::HitResult f) { return fmt::underlying(f); }
+
 namespace {
     SexLabDefeat::DefeatConfig* defeatConfig;
     SexLabDefeat::DefeatManager* defeatManager;

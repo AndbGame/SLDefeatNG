@@ -4,18 +4,20 @@
 
 #include "DefeatUtils.h"
 #include "DefeatSpinLock.h"
-#include "PapyrusInterface\ObjectVariable.h"
+#include "DefeatConfig.h"
+#include "DefeatActorManager.h"
 
 namespace SexLabDefeat {
+    class DefeatManager;
 
     class DefeatCombatManager : public IDefeatCombatManager {
     public:
-        DefeatCombatManager(IDefeatActorManager* defeatActorManager, IDefeatManager* defeatManager);
+        DefeatCombatManager(DefeatActorManager* defeatActorManager, DefeatManager* defeatManager);
         ~DefeatCombatManager();
         DefeatCombatManager(DefeatCombatManager const&) = delete;
         void operator=(DefeatCombatManager const& x) = delete;
 
-        IDefeatManager* getDefeatManager() { return _defeatManager; };
+        DefeatManager* getDefeatManager() { return _defeatManager; };
 
         void onActorEnteredToCombatState(RE::Actor* actor, RE::Actor* target_actor) override;
         void onActorEnteredToNonCombatState(RE::Actor* actor) override;
@@ -41,8 +43,8 @@ namespace SexLabDefeat {
         bool KDOnlyBack(bool opt, HitEventType event);
 
     protected:
-        IDefeatActorManager* _defeatActorManager;
-        IDefeatManager* _defeatManager;
+        DefeatActorManager* _defeatActorManager;
+        DefeatManager* _defeatManager;
 
         void onPlayerHitHandler(HitEvent event, DefeatPlayerActorType defActor, DefeatActorType source);
         void onNvNHitHandler(HitEvent event, DefeatActorType defActor, DefeatActorType source);

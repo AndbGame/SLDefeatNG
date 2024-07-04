@@ -59,6 +59,7 @@ set(source_files ${source_files}
     src/DefeatActor.cpp
     src/DefeatActorManager.cpp
     src/DefeatCombatManager.cpp
+    src/DefeatScene.cpp
     src/DefeatManager.cpp
     src/PapyrusInterface/DefeatPapyrus.cpp
 	src/PapyrusInterface/ExpiringFunctionCallQueue.cpp

@@ -4,10 +4,12 @@
 
 #include "DefeatActorManager.h"
 #include "DefeatCombatManager.h"
+#include "DefeatScene.h"
 #include "DefeatActor.h"
 #include "DefeatSpinLock.h"
 #include "DefeatWidget.h"
-#include "PapyrusInterface/DefeatPapyrus.h"
+#include "DefeatConfig.h"
+#include "DefeatScene.h"
 
 namespace SexLabDefeat {
 
@@ -24,8 +26,10 @@ namespace SexLabDefeat {
 
         DefeatWidget* getWidget() override;
         DefeatCombatManager* getCombatManager() override { return _defeatCombatManager; };
+        DefeatSceneManager* getSceneManager() override { return _defeatSceneManager; };
         DefeatActorManager* getActorManager() override { return _defeatActorManager; };
         DefeatConfig* getConfig() override { return _defeatConfig; };
+        bool hasTraceLog() override { return getConfig()->CFG_LOGGING > 1; };
 
         void load();
         void reset();
@@ -41,6 +45,7 @@ namespace SexLabDefeat {
         std::atomic<GameState> _gameState;
         DefeatConfig* _defeatConfig;
         DefeatCombatManager* _defeatCombatManager;
+        DefeatSceneManager* _defeatSceneManager;
         DefeatActorManager* _defeatActorManager;
         DefeatWidget* _defeatWidget = nullptr;
     };

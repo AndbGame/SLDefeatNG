@@ -3,7 +3,7 @@
 #include <Defeat.h>
 
 #include "DefeatSpinLock.h"
-#include "PapyrusInterface\ObjectVariable.h"
+#include "DefeatConfig.h"
 
 namespace SexLabDefeat {
 

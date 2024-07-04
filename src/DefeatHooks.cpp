@@ -55,10 +55,11 @@ namespace EventSync {
             auto source = const_cast<RE::Actor*>(a_event->holder->As<RE::Actor>());
             // constexpr std::array events{ "MTState", "IdleStop", "JumpLandEnd" };
             auto defActor = _defeatManager->getActorManager()->getDefeatActor(source);
-            if (defActor && defActor->getState() == SexLabDefeat::DefeatActorStates::KNONKDOWN_STATE &&
+            if (defActor && defActor->getState() == SexLabDefeat::DefeatActorStates::VICTIM_KNONKDOWN_STATE &&
                 a_event->tag == "MTState") {
-                SKSE::log::trace("OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>; play Bleedout", source->GetFormID(),
-                                 source->GetName(), a_event->tag, a_event->payload);
+                SKSE::log::trace(
+                    "OnBSAnimationGraphEvent for <{:08X}:{}> event tag: <{}>; payload: <{}>; play Bleedout",
+                    source->GetFormID(), source->GetName(), a_event->tag.c_str(), a_event->payload.c_str());
                 if (auto process = source->GetActorRuntimeData().currentProcess) {
                     process->PlayIdle(source, _defeatManager->Forms.Idle.BleedoutStart, source);
                 } else {

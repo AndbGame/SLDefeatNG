@@ -71,7 +71,7 @@ namespace SexLabDefeat {
             if (var == nullptr) {
                 _state = State::NOT_EXIST;
                 SKSE::log::critical("getFromVM - {} '{}' not found in Script Object",
-                                    (_config.isProprty ? "Property" : "Variable"), _varName);
+                                    (_config.isProprty ? "Property" : "Variable"), _varName.c_str());
                 return _def;
             }
 
@@ -81,25 +81,25 @@ namespace SexLabDefeat {
                 if (var->IsBool()) {
                     val = var->GetBool();
                     correctType = true;
-                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName, val);
+                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName.c_str(), val);
                 }
             } else if constexpr (std::is_same_v<T, float>) {
                 if (var->IsFloat()) {
                     val = var->GetFloat();
                     correctType = true;
-                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName, val);
+                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName.c_str(), val);
                 }
             } else if constexpr (std::is_same_v<T, int>) {
                 if (var->IsInt()) {
                     val = var->GetSInt();
                     correctType = true;
-                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName, val);
+                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName.c_str(), val);
                 }
             } else if constexpr (std::is_same_v<T, std::string_view>) {
                 if (var->IsString()) {
                     val = var->GetString();
                     correctType = true;
-                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName, val);
+                    SKSE::log::trace("getFromVM - var '{}' is '{}'", _varName.c_str(), val);
                 }
             } else if constexpr (std::is_same_v<T, std::set<std::string_view>>) {
                 if (var->IsArray()) {
@@ -108,7 +108,7 @@ namespace SexLabDefeat {
                         for (RE::BSScript::Variable* it = data->begin(); it != data->end(); it++) {
                             if (it != nullptr && it->IsString()) {
                                 val.insert(it->GetString());
-                                // SKSE::log::trace("getFromVM - var '{}' is array[]='{}'", _varName, it->GetString());
+                                // SKSE::log::trace("getFromVM - var '{}' is array[]='{}'", _varName.c_str(), it->GetString());
                             }
                         }
                     }
@@ -116,7 +116,7 @@ namespace SexLabDefeat {
                 }
             }
             if (!correctType) {
-                SKSE::log::critical("getFromVM - Incottect type of variable", _varName);
+                SKSE::log::critical("getFromVM - Incottect type of variable", _varName.c_str());
                 _state = State::NOT_EXIST;
                 return _def;
             } else {

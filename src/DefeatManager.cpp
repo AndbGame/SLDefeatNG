@@ -36,24 +36,24 @@ namespace {
         if (state.compare("ACTIVE") == 0) {
             _state = DefeatActorStates::ACTIVE;
         } else if (state.compare("ESCAPE") == 0) {
-            _state = DefeatActorStates::ESCAPE_STATE;
+            _state = DefeatActorStates::VICTIM_ESCAPE_STATE;
         } else if (state.compare("EXHAUSTED") == 0) {
-            _state = DefeatActorStates::EXHAUSTED_STATE;
+            _state = DefeatActorStates::VICTIM_EXHAUSTED_STATE;
         } else if (state.compare("KNOCKDOWN") == 0) {
-            _state = DefeatActorStates::KNONKDOWN_STATE;
+            _state = DefeatActorStates::VICTIM_KNONKDOWN_STATE;
             //actor->GetActorRuntimeData().boolFlags.set(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
         } else if (state.compare("KNOCKOUT") == 0) {
-            _state = DefeatActorStates::KNONKOUT_STATE;
+            _state = DefeatActorStates::VICTIM_KNONKOUT_STATE;
         } else if (state.compare("STANDING_STRUGGLE") == 0) {
-            _state = DefeatActorStates::STANDING_STRUGGLE_STATE;
+            _state = DefeatActorStates::VICTIM_STANDING_STRUGGLE_STATE;
         } else if (state.compare("SURRENDER") == 0) {
-            _state = DefeatActorStates::SURRENDER_STATE;
+            _state = DefeatActorStates::VICTIM_SURRENDER_STATE;
         } else if (state.compare("TRAUMA") == 0) {
-            _state = DefeatActorStates::TRAUMA_STATE;
+            _state = DefeatActorStates::VICTIM_TRAUMA_STATE;
         } else if (state.compare("YIELD") == 0) {
-            _state = DefeatActorStates::YIELD_STATE;
+            _state = DefeatActorStates::VICTIM_YIELD_STATE;
         } else if (state.compare("TIED") == 0) {
-            _state = DefeatActorStates::TIED_STATE;
+            _state = DefeatActorStates::VICTIM_TIED_STATE;
         } else if (state.compare("DISACTIVE") == 0) {
             _state = DefeatActorStates::DISACTIVE;
         } else {
@@ -81,11 +81,30 @@ namespace {
     }
 
     inline RE::Actor* getLastHitAggressor(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
-        auto defeatActor = _defeatManager->getActorManager()->getDefeatActorImpl(actor);
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActor(actor);
         if (defeatActor) {
-            auto formId = defeatActor->getLastHitAggressorFormId();
-            if (formId) {
-                return RE::TESForm::LookupByID<RE::Actor>(formId);
+            auto scene = _defeatManager->getSceneManager()->querySceneForVictimKnockdown(defeatActor);
+            SexLabDefeat::DefeatActorType aggressor = nullptr;
+            if (scene != nullptr) {
+                return _defeatManager->getActorManager()->getTESActor(
+                    _defeatManager->getActorManager()->getDefeatActor(scene->getAggressors().front()).get()
+                    );
+            }
+        }
+        return nullptr;
+    }
+
+    inline RE::Actor* querySceneForVictim(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActor(actor);
+        if (defeatActor) {
+            auto scene = _defeatManager->getSceneManager()->querySceneForVictimRape(defeatActor);
+            if (scene != nullptr && scene->getUID() == "rape") {
+                if (scene->getAggressors().empty()) {
+                    return nullptr;
+                }
+                return _defeatManager->getActorManager()->getTESActor(
+                    _defeatManager->getActorManager()
+                        ->getDefeatActor(scene->getAggressors().front()).get());
             }
         }
         return nullptr;
@@ -101,6 +120,7 @@ namespace {
         REGISTERPAPYRUSFUNC(setActorState, true)
         REGISTERPAPYRUSFUNC(getActorState, true)
         REGISTERPAPYRUSFUNC(getLastHitAggressor, true)
+        REGISTERPAPYRUSFUNC(querySceneForVictim, true)
 
 #undef REGISTERPAPYRUSFUNC
             return true;
@@ -113,15 +133,15 @@ namespace SexLabDefeat {
         {DefeatActorStates::NONE, "None"},
         {DefeatActorStates::ACTIVE, ""},
         {DefeatActorStates::DISACTIVE, "Disactive"},
-        {DefeatActorStates::KNONKOUT_STATE, "Knockout"},
-        {DefeatActorStates::STANDING_STRUGGLE_STATE, "Standing_struggle"},
-        {DefeatActorStates::KNONKDOWN_STATE, "Knockdown"},
-        {DefeatActorStates::TRAUMA_STATE, "Trauma"},
-        {DefeatActorStates::EXHAUSTED_STATE, "Exhausted"},
-        {DefeatActorStates::SURRENDER_STATE, "Surrender"},
-        {DefeatActorStates::YIELD_STATE, "Yield"},
-        {DefeatActorStates::ESCAPE_STATE, "Escape"},
-        {DefeatActorStates::TIED_STATE, "Tied"},
+        {DefeatActorStates::VICTIM_KNONKOUT_STATE, "Knockout"},
+        {DefeatActorStates::VICTIM_STANDING_STRUGGLE_STATE, "Standing_struggle"},
+        {DefeatActorStates::VICTIM_KNONKDOWN_STATE, "Knockdown"},
+        {DefeatActorStates::VICTIM_TRAUMA_STATE, "Trauma"},
+        {DefeatActorStates::VICTIM_EXHAUSTED_STATE, "Exhausted"},
+        {DefeatActorStates::VICTIM_SURRENDER_STATE, "Surrender"},
+        {DefeatActorStates::VICTIM_YIELD_STATE, "Yield"},
+        {DefeatActorStates::VICTIM_ESCAPE_STATE, "Escape"},
+        {DefeatActorStates::VICTIM_TIED_STATE, "Tied"},
     };
 
     DefeatManager::DefeatManager(DefeatConfig* defeatConfig) {
@@ -129,6 +149,7 @@ namespace SexLabDefeat {
         _defeatConfig = defeatConfig;
         _defeatActorManager = new DefeatActorManager(this);
         _defeatCombatManager = new DefeatCombatManager(_defeatActorManager, this);
+        _defeatSceneManager = new DefeatSceneManager(this);
     }
 
     void DefeatManager::load() {
@@ -227,6 +248,7 @@ namespace SexLabDefeat {
         LOAD_FORM(Forms.DefeatRessourcesQst, RE::TESQuest, 0x04B8D1, "SexLabDefeat.esp");
         LOAD_FORM(Forms.DefeatPlayerQTE, RE::TESQuest, 0x0B5F7C, "SexLabDefeat.esp");
         LOAD_FORM(Forms.Faction.DefeatFaction, RE::TESFaction, 0x001D92, "SexLabDefeat.esp");
+        LOAD_FORM(Forms.Faction.EvilFactionList, RE::BGSListForm, 0x0E6815, "SexLabDefeat.esp");
 
         LOAD_FORM(Forms.SexLabQuestFramework, RE::TESQuest, 0x000D62, "SexLab.esm");
         LOAD_FORM(Forms.Faction.SexLabAnimatingFaction, RE::TESFaction, 0x00E50F, "SexLab.esm");

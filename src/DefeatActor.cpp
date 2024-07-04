@@ -1,8 +1,14 @@
 #include "DefeatActor.h"
 
+#include "DefeatActorManager.h"
+
 namespace SexLabDefeat {
 
-    DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, IDefeatActorType impl) {
+    bool IDefeatActor::isSame(DefeatActorType actor) const {
+        return actor->getTESFormId() == this->getTESFormId();
+    }
+
+    DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, std::shared_ptr<DefeatActorImpl> impl) {
         assert(actor != nullptr);
         _data = data;
         _actor = actor;
@@ -10,38 +16,36 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::isCreature() {
-        return !_impl->getActorManager()->hasKeywordString(*this, _impl->getActorManager()->getForms().KeywordId.ActorTypeNPC);
+        return !getActorManager()->hasKeywordString(this, getActorManager()->getForms().KeywordId.ActorTypeNPC);
     }
 
     bool DefeatActor::isFollower() {
-        return _impl->getActorManager()->isPlayerTeammate(*this) ||
-               _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.CurrentFollowerFaction) ||
-               _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.CurrentHireling);
+        return getActorManager()->isPlayerTeammate(this) ||
+               getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.CurrentFollowerFaction) ||
+               getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.CurrentHireling);
     }
 
     bool DefeatActor::isSatisfied() {
-        return _impl->getActorManager()->hasSpell(*this, _impl->getActorManager()->getForms().SatisfiedSPL);
+        return getActorManager()->hasSpell(this, getActorManager()->getForms().SatisfiedSPL);
     }
 
     bool DefeatActor::isKDImmune() {
-        return _impl->getActorManager()->hasMagicEffect(
-            *this, _impl->getActorManager()->getForms().MiscMagicEffects.ImmunityEFF);
+        return getActorManager()->hasMagicEffect(this, getActorManager()->getForms().MiscMagicEffects.ImmunityEFF);
     }
 
     bool DefeatActor::isKDAllowed() {
-        if (_impl->getActorManager()->isInKillMove(*this) || isKDImmune()) {
+        if (getActorManager()->isInKillMove(this) || isKDImmune()) {
             //        SKSE::log::trace("isKDAllowed - false {} {} {}",
             //                         getActor()->IsInKillMove(), isKDImmune(),
             //                         actor->HasKeywordString("FavorBrawlEvent"));
             return false;
         }
         if (isPlayer()) {
-            if (_impl->getActorManager()->hasKeywordString(*this, "FavorBrawlEvent")) {
+            if (getActorManager()->hasKeywordString(this, "FavorBrawlEvent")) {
                 SKSE::log::trace("isKDAllowed - false FavorBrawlEvent");
                 return false;
             }
-            if (_impl->getActorManager()->isQuestEnabled(
-                    _impl->getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
+            if (getActorManager()->isQuestEnabled(getActorManager()->getForms().MiscQuests.DGIntimidateQuest)) {
                 SKSE::log::trace("isKDAllowed - false DGIntimidateQuest");
                 return false;
             }
@@ -50,9 +54,9 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::isTied() {
-        if (_impl->getActorManager()->getSoftDependency().ZaZ) {
-            return _impl->getActorManager()->wornHasAnyKeyword(
-                *this, std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
+        if (getActorManager()->getSoftDependency().ZaZ) {
+            return getActorManager()->wornHasAnyKeyword(
+                this, std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
         }
         return false;
     }
@@ -65,21 +69,20 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::inSexLabScene() {
-        return _impl->getActorManager()->hasKeywordString(*this,
-                                                           _impl->getActorManager()->getForms().KeywordId.SexLabActive) || 
-            (_impl->getActorManager()->getForms().Faction.SexLabAnimatingFaction && _impl->getActorManager()->isInFaction(*this, _impl->getActorManager()->getForms().Faction.SexLabAnimatingFaction));
+        return getActorManager()->hasKeywordString(this, getActorManager()->getForms().KeywordId.SexLabActive) || 
+            (getActorManager()->getForms().Faction.SexLabAnimatingFaction &&
+                getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.SexLabAnimatingFaction));
     }
 
     bool DefeatActor::isDefeated() {
-        return _impl->getActorManager()->isInFaction(*this,
-                                              _impl->getActorManager()->getForms().Faction.DefeatFaction);
+        return getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.DefeatFaction);
     }
 
     bool DefeatActor::isDefeatAllowed2PC() {
         bool ret = true;
         if (isCreature()) {
             std::string raceKey = getSexLabRaceKey();
-            auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedPvic->get();
+            auto set = getActorManager()->getConfig()->Config.RaceAllowedPvic->get();
             if (auto search = set.find(raceKey); search == set.end()) {
                 ret = false;
             }
@@ -91,7 +94,7 @@ namespace SexLabDefeat {
         bool ret = true;
         if (isCreature()) {
             std::string raceKey = getSexLabRaceKey();
-            auto set = _impl->getActorManager()->getConfig()->Config.RaceAllowedNVN->get();
+            auto set = getActorManager()->getConfig()->Config.RaceAllowedNVN->get();
             if (auto search = set.find(raceKey); search == set.end()) {
                 ret = false;
             }
@@ -99,21 +102,33 @@ namespace SexLabDefeat {
         return ret;
     }
 
+    bool DefeatActor::validForAggressorRole() {
+        return getActorManager()->validForAggressorRole(this); 
+    }
+
+    bool DefeatActor::validForVictrimRole() {
+        return getActorManager()->validForVictrimRole(this);
+    }
+
     bool DefeatActor::isIgnored() { 
-        return _impl->getActorManager()->isIgnored(_actor); }
+        return getActorManager()->isIgnored(_actor); }
 
     DefeatActorType DefeatActor::getLastHitAggressor() {
-        return _impl->getActorManager()->getDefeatActor(_data.lastHitAggressor);
+        return getActorManager()->getDefeatActor(_data.lastHitAggressor);
+    }
+
+    bool DefeatActor::isEvilFaction() {
+        return getActorManager()->isInFaction(this, getActorManager()->getForms().Faction.EvilFactionList);
     }
 
 
     float DefeatPlayerActor::getVulnerability() {
-        if (!_impl->getActorManager()->getSoftDependency().LRGPatch) {
+        if (!getActorManager()->getSoftDependency().LRGPatch) {
             return 0;
         }
         float ret = 0;
-        if (_impl->getActorManager()->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
-            _impl->getActorManager()->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
+        if (getActorManager()->getConfig()->Config.LRGPatch.DeviousFrameworkON->get() &&
+            getActorManager()->getConfig()->Config.LRGPatch.KDWayVulnerabilityUseDFW->get()) {
             ret = _data.DFWVulnerability;
 
         } else {
@@ -124,6 +139,22 @@ namespace SexLabDefeat {
     }
 
     
+    void DefeatActorImpl::setLastHitAggressor(DefeatActorType lastHitAggressor) {
+        UniqueSpinLock lock(*this);
+        _data.lastHitAggressor = lastHitAggressor->getTESFormId();
+        _data.lastHitAggressors[lastHitAggressor->getTESFormId()] = clock::now();
+    }
+
+    DefeatActorType DefeatActorImpl::getLastHitAggressor() {
+        UniqueSpinLock lock(*this);
+        return getActorManager()->getDefeatActor(_data.lastHitAggressor);
+    }
+
+    void DefeatActorImpl::requestExtraData(DefeatActorType actor, std::function<void()> callback,
+                                           milliseconds timeoutMs) {
+        extradataQueue->functionCall(actor->getTESActor(), callback, timeoutMs);
+    }
+
     bool DefeatActorImpl::registerAndCheckHitGuard(DefeatActorType aggressor, RE::FormID source,
                                                    RE::FormID projectile) {
         std::array<HitSpamKey, 2> toCheck{{{0, 0}, {0, 0}}};
@@ -159,7 +190,7 @@ namespace SexLabDefeat {
         return false;
     }
 
-    DefeatPlayerActorImpl::DefeatPlayerActorImpl(RE::FormID formID, IDefeatActorManager* defeatActorManager)
+    DefeatPlayerActorImpl::DefeatPlayerActorImpl(RE::FormID formID, DefeatActorManager* defeatActorManager)
         : DefeatActorImpl(formID, defeatActorManager) {
         if (defeatActorManager->getSoftDependency().LRGPatch) {
             LRGVulnerabilityVar = PapyrusInterface::FloatVarPtr(new PapyrusInterface::FloatVar(

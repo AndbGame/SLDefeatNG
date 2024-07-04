@@ -89,6 +89,7 @@ namespace SexLabDefeat {
         BOOL_PROPERTY(bResistQTE);
 
         BOOL_PROPERTY(EveryoneNVN);
+        BOOL_PROPERTY(NPCLastEnemy);
         BOOL_PROPERTY(AllowNPC);
         BOOL_PROPERTY(AllowCagg);
         BOOL_PROPERTY(AllowCvic);

@@ -35,6 +35,29 @@ Experimental 6
 - Disable onHit processing if PlayerVictim disabled
 - RelWithDebInfo build
 
-Experimental 7
+Experimental 6.01
 
 - Exclude BaboDialogueFaction (soft dependency BaboDialogue)
+
+Experimental 6.1
+
+- Native onHit processing for NvN
+- Removed limit of affected NPC in NvN action
+
+Experimental 6.2
+
+- Battle optimizations and fixes
+- lot of fixes in Defeat oprions (do not remember which)
+- some fixes in NvN
+- interrupt sexlab scene only after fully launch SL scene - fix stuck Follower in defeated state
+- fix 'Cleanup' button
+
+Experimental 6.3
+
+- Set NoBleedoutRecovery in skse plugin. attempt to fix BleedoutRecovery in external mods (NFF?)
+
+Experimental 7
+
+- Exclude kill event for protected npc in NvN (still something not work)
+- Update vcpkg dependency to latest
+- start refactoring NVN events: select agressor for victim NPC
