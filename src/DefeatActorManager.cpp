@@ -22,9 +22,7 @@ namespace SexLabDefeat {
     }
 
     std::shared_ptr<DefeatActorImpl> DefeatActorManager::getDefeatActorImpl(RE::Actor* actor) {
-        assert(actor != nullptr);
-        auto formID = actor->GetFormID();
-        return getDefeatActorImpl(formID);
+        return getDefeatActorImpl(actor->GetFormID());
     }
 
     std::shared_ptr<DefeatActorImpl> DefeatActorManager::getDefeatActorImpl(RE::FormID formID) {
@@ -44,9 +42,7 @@ namespace SexLabDefeat {
         if (formID) {
             auto actor = RE::TESForm::LookupByID<RE::Actor>(formID);
             if (actor) {
-                auto defImpl = getDefeatActorImpl(actor);
-                SexLabDefeat::UniqueSpinLock lock(*defImpl);
-                return std::make_shared<DefeatActor>(defImpl->_data, actor, defImpl);
+                return getDefeatActor(actor);
             }
         }
         return nullptr;
@@ -56,7 +52,11 @@ namespace SexLabDefeat {
         assert(actor != nullptr);
         auto defImpl = getDefeatActorImpl(actor);
         SexLabDefeat::UniqueSpinLock lock(*defImpl);
-        return std::make_shared<DefeatActor>(defImpl->_data, actor, defImpl);
+        if (defImpl->isPlayer()) {
+            return std::make_shared<DefeatPlayerActor>(defImpl->_data, actor, defImpl);
+        } else {
+            return std::make_shared<DefeatActor>(defImpl->_data, actor, defImpl);
+        }
     }
 
     DefeatActorType DefeatActorManager::getDefeatActor(IDefeatActorType actor) { return getDefeatActor(actor->getTESFormId()); }
