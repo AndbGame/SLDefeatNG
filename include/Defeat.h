@@ -365,14 +365,6 @@ namespace SexLabDefeat {
 
         RE::FormID getTESFormId() const { return _data.TESFormId; }
 
-        bool isSame(RE::Actor* actor) const {
-            // TODO: move code to DefeatActorManager
-            assert(actor != nullptr);
-            return actor->GetFormID() == getTESFormId();
-        };
-
-        bool isSame(DefeatActorType actor) const;
-
         virtual bool isIgnored() { return false; };
         virtual bool isDefeated() { return false; };
 

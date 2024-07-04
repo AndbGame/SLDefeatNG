@@ -55,10 +55,9 @@ namespace SexLabDefeat {
 
         auto player = _defeatActorManager->getPlayer();
 
-        auto isPlayer = player->isSame(target);
         DefeatActorType defeatActor = nullptr;
 
-        if (isPlayer) {
+        if (target->isPlayer()) {
             if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
                 SKSE::log::trace("onActorEnterBleedout PlayerVictim disabled - skipped");
                 return;
@@ -76,7 +75,7 @@ namespace SexLabDefeat {
 
         HitResult result = HitResult::SKIP;
 
-        if (isPlayer) {
+        if (target->isPlayer()) {
             result = HitResult::SKIP;
         } else {
             if (target->isIgnored()) {
@@ -184,23 +183,8 @@ namespace SexLabDefeat {
             return;
         }
 
-        auto player = _defeatActorManager->getPlayer();
-
-        auto isPlayerTarget = player->isSame(target_actor);
-        auto isPlayerAggressor = player->isSame(aggr_actor);
-        DefeatActorType target = nullptr;
-        DefeatActorType source = nullptr;
-        if (isPlayerTarget) {
-            target = player;
-            source = _defeatActorManager->getDefeatActor(aggr_actor);
-        } else {
-            target = _defeatActorManager->getDefeatActor(target_actor);
-            if (!isPlayerAggressor) {
-                source = _defeatActorManager->getDefeatActor(aggr_actor);
-            } else {
-                source = player;
-            }
-        }
+        DefeatActorType target = _defeatActorManager->getDefeatActor(target_actor);
+        DefeatActorType source = _defeatActorManager->getDefeatActor(aggr_actor);
 
         if (target->inSexLabScene()) {
             onSexLabSceneInterrupt(target, source, true);
@@ -216,7 +200,7 @@ namespace SexLabDefeat {
             return;
         }
 
-        if (isPlayerTarget) {
+        if (target->isPlayer()) {
             // npc -> player
             if (!_defeatManager->getConfig()->Config.OnOffPlayerVictim->get()) {
                 SKSE::log::trace("onHitHandler PlayerVictim disabled - skipped");
@@ -227,7 +211,7 @@ namespace SexLabDefeat {
                 return;
             }
         } else {
-            if (!isPlayerAggressor) {
+            if (!source->isPlayer()) {
                 // npc -> npc
             } else {
                 // player -> npc
@@ -263,14 +247,14 @@ namespace SexLabDefeat {
 
         auto hitEvent = createHitEvent(target, source, event);
 
-        if (isPlayerTarget) {
-            onPlayerHitHandler(hitEvent, player, source);
+        if (target->isPlayer()) {
+            onPlayerHitHandler(hitEvent, target, source);
         } else {
             onNvNHitHandler(hitEvent, target, source);
         }
     }
 
-    void DefeatCombatManager::onPlayerHitHandler(HitEvent event, DefeatPlayerActorType targetActor,
+    void DefeatCombatManager::onPlayerHitHandler(HitEvent event, DefeatActorType targetActor,
                                                  DefeatActorType sourceActor) {
         SKSE::log::trace("onPlayerHitHandler");
 

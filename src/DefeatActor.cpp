@@ -4,10 +4,6 @@
 
 namespace SexLabDefeat {
 
-    bool IDefeatActor::isSame(DefeatActorType actor) const {
-        return actor->getTESFormId() == this->getTESFormId();
-    }
-
     DefeatActor::DefeatActor(DefeatActorDataType data, RE::Actor* actor, std::shared_ptr<DefeatActorImpl> impl) {
         assert(actor != nullptr);
         _data = data;
