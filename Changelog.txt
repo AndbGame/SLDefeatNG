@@ -61,3 +61,4 @@ Experimental 7
 - Exclude kill event for protected npc in NvN (still something not work)
 - Update vcpkg dependency to latest
 - start refactoring NVN events: select agressor for victim NPC
+- modification in SexLab animation selection: some experimental algothms for small and bigguy animations

@@ -87,6 +87,11 @@ namespace SexLabDefeat {
             if (result.status != DefeatSceneResult::ResultStatus::SUCCESS) {
                 if (result.status == DefeatSceneResult::ResultStatus::AGGRESSOR_NOT_READY) {
                     hasSkippedActors = true;
+                    SKSE::log::trace("DefeatRapeScene - skipp aggressor: <{:08X}> not ready by resolveAgressor",
+                                     _agg->getTESFormId());
+                } else {
+                    SKSE::log::trace("DefeatRapeScene - skipp aggressor: <{:08X}> not allowed by resolveAgressor",
+                                     _agg->getTESFormId());
                 }
                 continue;
             }
@@ -175,7 +180,7 @@ namespace SexLabDefeat {
                 fmt::format("Actor <{:08X}> not have ready suitable aggressor", defeatActorVictim->getTESFormId()));
         }
         SKSE::log::trace("DefeatRapeScene - <{:08X}> selected aggressor: <{:08X}> by {}",
-                         sceneAggressor->getTESFormId(), sceneAggressor->getTESFormId(), reason);
+                         defeatActorVictim->getTESFormId(), sceneAggressor->getTESFormId(), reason);
         aggressors.push_back(sceneAggressor);
         return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::SUCCESS);
     }
