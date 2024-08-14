@@ -30,38 +30,21 @@ namespace {
         }
         SKSE::log::trace("Papyrus call setActorState(<{:08X}:{}>, {})", actor->GetFormID(), actor->GetName(), state);
 
-        std::transform(state.begin(), state.end(), state.begin(), ::toupper);
-        DefeatActorStates _state = DefeatActorStates::ACTIVE;
-        //actor->GetActorRuntimeData().boolFlags.reset(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
-        if (state.compare("ACTIVE") == 0) {
-            _state = DefeatActorStates::ACTIVE;
-        } else if (state.compare("ESCAPE") == 0) {
-            _state = DefeatActorStates::VICTIM_ESCAPE_STATE;
-        } else if (state.compare("EXHAUSTED") == 0) {
-            _state = DefeatActorStates::VICTIM_EXHAUSTED_STATE;
-        } else if (state.compare("KNOCKDOWN") == 0) {
-            _state = DefeatActorStates::VICTIM_KNONKDOWN_STATE;
-            //actor->GetActorRuntimeData().boolFlags.set(RE::Actor::BOOL_FLAGS::kNoBleedoutRecovery);
-        } else if (state.compare("KNOCKOUT") == 0) {
-            _state = DefeatActorStates::VICTIM_KNONKOUT_STATE;
-        } else if (state.compare("STANDING_STRUGGLE") == 0) {
-            _state = DefeatActorStates::VICTIM_STANDING_STRUGGLE_STATE;
-        } else if (state.compare("SURRENDER") == 0) {
-            _state = DefeatActorStates::VICTIM_SURRENDER_STATE;
-        } else if (state.compare("TRAUMA") == 0) {
-            _state = DefeatActorStates::VICTIM_TRAUMA_STATE;
-        } else if (state.compare("YIELD") == 0) {
-            _state = DefeatActorStates::VICTIM_YIELD_STATE;
-        } else if (state.compare("TIED") == 0) {
-            _state = DefeatActorStates::VICTIM_TIED_STATE;
-        } else if (state.compare("DISACTIVE") == 0) {
-            _state = DefeatActorStates::DISACTIVE;
-        } else {
-            SKSE::log::error("Papyrus call setActorState(<{:08X}:{}>, {}). ERROR: Unknown state. State is active",
-                             actor->GetFormID(), actor->GetName(),
-                             state);
-        }
+        DefeatActorStates _state = _defeatManager->getStateByString(state);
         _defeatManager->setActorState(actor, _state, false);
+    }
+
+    inline bool tryExchangeActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string oldState, std::string newState) {
+        if (actor == nullptr) {
+            return false;
+        }
+        SKSE::log::trace("Papyrus call tryExchangeActorState(<{:08X}:{}>, {}, {})", actor->GetFormID(),
+                         actor->GetName(), oldState, newState);
+
+        DefeatActorStates _oldState = _defeatManager->getStateByString(oldState);
+        DefeatActorStates _newState = _defeatManager->getStateByString(newState);
+
+        return _defeatManager->tryExchangeActorState(actor, _oldState, _newState, false);
     }
 
     inline std::string getActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
@@ -97,7 +80,24 @@ namespace {
         return nullptr;
     }
 
-    inline RE::Actor* querySceneForVictim(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+    inline std::vector<RE::Actor*> getNearestActorsForGangBang(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActor(actor);
+        std::vector<RE::Actor*> actors{};
+        if (defeatActor) {
+            auto list = _defeatManager->getActorManager()->getNearestAggressorsForGangBang(defeatActor.get());
+            int cnt = 0;
+            for (const auto& defAct : list) {
+                actors.push_back(_defeatManager->getActorManager()->getTESActor(defAct.get()));
+                cnt++;
+                if (cnt > 120) {
+                    break;
+                }
+            }
+        }
+        return actors;
+    }
+
+    inline RE::Actor* queryNvNScene(PAPYRUSFUNCHANDLE, RE::ActiveEffect* form, RE::Actor* actor) {
         auto defeatActor = _defeatManager->getActorManager()->getDefeatActor(actor);
         if (defeatActor) {
             auto scene = _defeatManager->getSceneManager()->querySceneForVictimRape(defeatActor);
@@ -110,6 +110,7 @@ namespace {
                         ->getDefeatActor(scene->getAggressors().front()).get());
             }
         }
+        //SexLabDefeat::PapyrusInterface::GetScriptObject(form, "DefeatQTEWidget");
         return nullptr;
     }
 
@@ -121,9 +122,11 @@ namespace {
 
         REGISTERPAPYRUSFUNC(responseActorExtraData, true)
         REGISTERPAPYRUSFUNC(setActorState, true)
+        REGISTERPAPYRUSFUNC(tryExchangeActorState, true)
         REGISTERPAPYRUSFUNC(getActorState, true)
         REGISTERPAPYRUSFUNC(getLastHitAggressor, true)
-        REGISTERPAPYRUSFUNC(querySceneForVictim, true)
+        REGISTERPAPYRUSFUNC(queryNvNScene, true)
+        REGISTERPAPYRUSFUNC(getNearestActorsForGangBang, true)
 
 #undef REGISTERPAPYRUSFUNC
             return true;
@@ -306,6 +309,9 @@ namespace SexLabDefeat {
 
     void DefeatManager::setActorState(RE::Actor* target_actor, DefeatActorStates state, bool isTransition) {
         auto defeatActor = getActorManager()->getDefeatActor(target_actor);
+        if (!defeatActor) {
+            return;
+        }
         defeatActor->setState(state);
         defeatActor->setStateTransition(isTransition);
         if (state != DefeatActorStates::ACTIVE) {
@@ -322,8 +328,64 @@ namespace SexLabDefeat {
         }
     }
 
+    bool DefeatManager::tryExchangeActorState(RE::Actor* target_actor, DefeatActorStates oldState,
+                                              DefeatActorStates newState, bool isTransition) {
+        auto defeatActor = getActorManager()->getDefeatActor(target_actor);
+        if (!defeatActor) {
+            return false;
+        }
+        if (!defeatActor->tryExchangeState(oldState, newState)) {
+            return false;
+        }
+        defeatActor->setStateTransition(isTransition);
+        if (newState != DefeatActorStates::ACTIVE) {
+            defeatActor->resetDynamicDefeat();
+            if (defeatActor->isPlayer()) {
+                _defeatCombatManager->interruptPlayerDeplateDynamicDefeat();
+                auto widget = getWidget();
+                if (widget != nullptr && widget->getState() == DefeatWidget::State::DYNAMIC_WIDGET) {
+                    if (!getWidget()->stopDynamicWidget()) {
+                        SKSE::log::error("Error on stop Dynamic Widget");
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     DefeatManager::GameState DefeatManager::getGameState() { return _gameState.load(); }
     void DefeatManager::setGameState(DefeatManager::GameState state) { _gameState.store(state); }
+
+    DefeatActorStates DefeatManager::getStateByString(std::string state) {
+        std::transform(state.begin(), state.end(), state.begin(), ::toupper);
+        DefeatActorStates _state = DefeatActorStates::ACTIVE;
+        if (state.compare("ACTIVE") == 0) {
+            _state = DefeatActorStates::ACTIVE;
+        } else if (state.compare("ESCAPE") == 0) {
+            _state = DefeatActorStates::VICTIM_ESCAPE_STATE;
+        } else if (state.compare("EXHAUSTED") == 0) {
+            _state = DefeatActorStates::VICTIM_EXHAUSTED_STATE;
+        } else if (state.compare("KNOCKDOWN") == 0) {
+            _state = DefeatActorStates::VICTIM_KNONKDOWN_STATE;
+        } else if (state.compare("KNOCKOUT") == 0) {
+            _state = DefeatActorStates::VICTIM_KNONKOUT_STATE;
+        } else if (state.compare("STANDING_STRUGGLE") == 0) {
+            _state = DefeatActorStates::VICTIM_STANDING_STRUGGLE_STATE;
+        } else if (state.compare("SURRENDER") == 0) {
+            _state = DefeatActorStates::VICTIM_SURRENDER_STATE;
+        } else if (state.compare("TRAUMA") == 0) {
+            _state = DefeatActorStates::VICTIM_TRAUMA_STATE;
+        } else if (state.compare("YIELD") == 0) {
+            _state = DefeatActorStates::VICTIM_YIELD_STATE;
+        } else if (state.compare("TIED") == 0) {
+            _state = DefeatActorStates::VICTIM_TIED_STATE;
+        } else if (state.compare("ASSAULT") == 0) {
+            _state = DefeatActorStates::ASSAULT_STATE;
+        } else if (state.compare("DISACTIVE") == 0) {
+            _state = DefeatActorStates::DISACTIVE;
+        }
+        return _state;
+    }
 
     PapyrusInterface::ObjectPtr DefeatManager::getDefeatQTEWidgetScript() const {
         if (Forms.DefeatPlayerQTE == nullptr) {

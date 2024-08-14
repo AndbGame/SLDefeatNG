@@ -161,6 +161,9 @@ namespace SexLabDefeat {
             if (_data.state == oldState) {
                 _data.state = newState;
                 return true;
+            } else {
+                SKSE::log::trace("tryExchangeState failed for <{:08X}>. Exchange {} -> {}. Current state: {}",
+                                 getTESFormId(), oldState, newState, _data.state);
             }
             return false;
         }

@@ -94,6 +94,7 @@ namespace SexLabDefeat {
 
     protected:
         DefeatSceneResult resolve() override;
+        DefeatSceneResult selectVictim() override;
         DefeatSceneResult resolveAgressor(DefeatActorType agg) override;
         DefeatSceneResult selectAgressor(DefeatActorType agg) override;
     };

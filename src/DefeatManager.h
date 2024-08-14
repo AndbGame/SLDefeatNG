@@ -23,6 +23,7 @@ namespace SexLabDefeat {
 
         GameState getGameState() override;
         void setGameState(GameState state) override;
+        DefeatActorStates getStateByString(std::string state) override;
 
         DefeatWidget* getWidget() override;
         DefeatCombatManager* getCombatManager() override { return _defeatCombatManager; };
@@ -37,6 +38,8 @@ namespace SexLabDefeat {
         PapyrusInterface::ObjectPtr getDefeatQTEWidgetScript() const;
         void setWidget(DefeatWidget* widget);
         void setActorState(RE::Actor* target_actor, DefeatActorStates state, bool isTransition = true);
+        bool tryExchangeActorState(RE::Actor* target_actor, DefeatActorStates oldState, DefeatActorStates newState,
+                                   bool isTransition = true);
 
     protected:
         void initializeDependency();

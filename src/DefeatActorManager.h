@@ -30,6 +30,8 @@ namespace SexLabDefeat {
         DefeatActorType getDefeatActor(IDefeatActorType actor) override;
         RE::Actor* getTESActor(DefeatActor* actor) override;
 
+        DefeatActorStates getDefeatActorImplState(RE::FormID formID);
+
         /* Pre Checks functions */
         bool isIgnored(RE::Actor* actor);
         bool validForAggressorRole(DefeatActor* actor) const;
@@ -69,6 +71,7 @@ namespace SexLabDefeat {
         bool isPlayerTeammate(DefeatActor* source);
 
         std::list<DefeatActorType> getNearestAggressors(DefeatActor* actor);
+        std::list<DefeatActorType> getNearestAggressorsForGangBang(DefeatActor* actor);
         std::list<DefeatActorType> getNearestFollowers(DefeatActor* actor);
 
         DefeatConfig* getConfig();

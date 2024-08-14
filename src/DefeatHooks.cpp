@@ -1,5 +1,8 @@
 #include "DefeatHooks.h"
 
+#include <Windows.h>
+#include <detours/detours.h>
+
 namespace EventSync {
 
     class OnTESCombatEventHandler : public RE::BSTEventSink<RE::TESCombatEvent> {
@@ -169,72 +172,35 @@ namespace EventSync {
         }
     };
 }
-
+#include <boost/stacktrace.hpp>
 namespace Hooks {
-    using clock = std::chrono::high_resolution_clock;
     SexLabDefeat::DefeatManager* manager;
-
-    static void UpdateCombatControllerSettings(RE::Character* a_this);
-    static inline REL::Relocation<decltype(UpdateCombatControllerSettings)> _UpdateCombatControllerSettings;
-
-    std::map<RE::FormID, clock::time_point> _sexLabInterruptExpirations;
-    SexLabDefeat::SpinLock _sexLabInterruptExpirationsLock;
-
-    void UpdateCombatControllerSettings(RE::Character* character) {
-        _UpdateCombatControllerSettings(character);
-
-        /* if (character && character->IsInFaction(manager->Forms.Faction.DefeatFaction)) {
-            if (character->IsInCombat()) {
-                character->StopCombat();
-            }
-            return;
-        }*/
-        auto group = character->GetCombatGroup();
-        if (!group) {
-            return;
+    
+	uint8_t* Hooks::DoDetect(RE::Actor* viewer, RE::Actor* target, int32_t& detectval, uint8_t& unk04, uint8_t& unk05,
+                             uint32_t& unk06, RE::NiPoint3& pos, float& unk08, float& unk09, float& unk10) {
+        if (target && manager->getActorManager()->getDefeatActorImplState(target->GetFormID()) !=
+                          SexLabDefeat::DefeatActorStates::ACTIVE) {
+            SKSE::log::trace("DoDetect interrupt: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
+            return nullptr;
         }
-        auto now = clock::now();
-
-        group->lock.LockForRead();
-
-        for (auto&& cmbtarget : group->targets) {
-            auto targetptr = cmbtarget.targetHandle.get();
-            if (targetptr) {
-                auto targetActor = targetptr.get();
-                if (targetActor) {
-                    SKSE::log::info("UpdateCombatControllerSettings <{:08X}:{}> -> <{:08X}:{}>", character->GetFormID(),
-                                    character->GetName(), targetActor->GetFormID(), targetActor->GetName());
-                }
-                if (targetActor && !targetActor->IsPlayer() &&
-                    targetActor->HasKeywordString(manager->Forms.KeywordId.SexLabActive)) {
-                    _sexLabInterruptExpirationsLock.spinLock();
-                    auto val = _sexLabInterruptExpirations.find(targetActor->GetFormID());
-                    if (val == _sexLabInterruptExpirations.end() || (now > val->second)) {
-                        _sexLabInterruptExpirations.insert_or_assign(targetActor->GetFormID(), now + 5000ms);
-                        _sexLabInterruptExpirationsLock.spinUnlock();
-
-                        auto target = manager->getActorManager()->getDefeatActor(targetActor);
-                        auto aggressor = manager->getActorManager()->getDefeatActor(character);
-                        manager->getCombatManager()->onSexLabSceneInterrupt(target, aggressor, true);
-                    } else {
-                        _sexLabInterruptExpirationsLock.spinUnlock();
-                    }
-                }
-            }
+        if (viewer && manager->getActorManager()->getDefeatActorImplState(viewer->GetFormID()) !=
+                          SexLabDefeat::DefeatActorStates::ACTIVE) {
+            return nullptr;
         }
-
-        group->lock.UnlockForRead();
+        return _DoDetect(viewer, target, detectval, unk04, unk05, unk06, pos, unk08, unk09, unk10);
     }
+
 }
 
 void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
     Hooks::manager = defeatManager;
 
     SKSE::log::info("Install hooks pre");
-    if (defeatManager->getConfig()->Hooks.UpdateCombatControllerSettings > 0) {
-        //REL::Relocation<std::uintptr_t> upccs{RE::Character::VTABLE[0]};
-        //Hooks::_UpdateCombatControllerSettings = upccs.write_vfunc(0x11B, Hooks::UpdateCombatControllerSettings);
-    }
+    SKSE::AllocTrampoline(14 * 2);
+    auto& trampoline = SKSE::GetTrampoline();
+
+    REL::Relocation<std::uintptr_t> det{REL::RelocationID(41659, 42742), REL::VariantOffset(0x526, 0x67B, 0)};
+    Hooks::_DoDetect = trampoline.write_call<5>(det.address(), Hooks::DoDetect);
     SKSE::log::info("Install hooks post");
 }
 

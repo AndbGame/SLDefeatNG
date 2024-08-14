@@ -27,14 +27,14 @@ namespace SexLabDefeat {
 
     DefeatSceneResult TDefeatSceneWithVictim::resolveVictim() {
         if (!manager->getActorManager()->getDefeatActor(victim)->validForVictrimRole()) {
-            auto ret = selectVictim();
-            if (ret.status != DefeatSceneResult::ResultStatus::SUCCESS) {
-                return ret;
-            }
             SKSE::log::trace("DefeatRapeScene - <{:08X}> not validForVictrimRole", victim->getTESFormId());
             return makeDefeatSceneResult(
                 DefeatSceneResult::ResultStatus::VICTIM_NOT_SUITABLE,
                 fmt::format("Actor <{:08X}> not valid for victrim role", victim->getTESFormId()));
+        }
+        auto ret = selectVictim();
+        if (ret.status != DefeatSceneResult::ResultStatus::SUCCESS) {
+            return ret;
         }
         return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::SUCCESS);
     }
@@ -204,8 +204,27 @@ namespace SexLabDefeat {
         }
         return result;
     }
+    DefeatSceneResult DefeatRapeScene::selectVictim() {
+        auto result = TDefeatSceneWithVictim::selectVictim();
+        if (result.status != DefeatSceneResult::ResultStatus::SUCCESS) {
+            return result;
+        }
+        auto defeatActorVictim = manager->getActorManager()->getDefeatActor(victim);
+        if (defeatActorVictim->getState() != DefeatActorStates::VICTIM_KNONKDOWN_STATE) {
+            SKSE::log::trace("DefeatRapeScene - Victim <{:08X}> not knocked", defeatActorVictim->getTESFormId());
+            return makeDefeatSceneResult(
+                DefeatSceneResult::ResultStatus::VICTIM_NOT_SUITABLE,
+                fmt::format("Actor <{:08X}> not knocked", defeatActorVictim->getTESFormId()));
+        }
+        return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::SUCCESS);
+    }
     DefeatSceneResult DefeatRapeScene::resolveAgressor(DefeatActorType agg) {
+        auto result = TDefeatSceneWithAggressors::resolveAgressor(agg);
+        if (result.status != DefeatSceneResult::ResultStatus::SUCCESS) {
+            return result;
+        }
         if (agg->isKDImmune()) {
+            SKSE::log::trace("DefeatRapeScene - Aggressor <{:08X}> isKDImmune", agg->getTESFormId());
             return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::AGGRESSOR_NOT_READY);
         }
 
@@ -222,6 +241,7 @@ namespace SexLabDefeat {
             // TODO: ???
         }
         if (!manager->getActorManager()->IsSexualAssaulAllowedByAggressor(defeatActorVictim.get(), agg.get())) {
+            SKSE::log::trace("DefeatRapeScene - Aggressor <{:08X}> not is IsSexualAssaulAllowed", agg->getTESFormId());
             return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::AGGRESSOR_NOT_FOUND);
         }
 
@@ -232,6 +252,7 @@ namespace SexLabDefeat {
         if (agg->tryExchangeState(DefeatActorStates::ACTIVE, DefeatActorStates::ASSAULT_STATE)) {
             return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::SUCCESS);
         }
+        SKSE::log::trace("DefeatRapeScene - Fail set ASSAULT_STATE for Aggressor <{:08X}>", agg->getTESFormId());
         return makeDefeatSceneResult(DefeatSceneResult::ResultStatus::AGGRESSOR_NOT_READY);
     }
 

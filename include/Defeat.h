@@ -357,69 +357,69 @@ namespace SexLabDefeat {
     class IDefeatActor {
     public:
 
-        RE::FormID getTESFormId() const { return _data.TESFormId; }
+        inline RE::FormID getTESFormId() const { return _data.TESFormId; }
 
         virtual bool isIgnored() { return false; };
         virtual bool isDefeated() { return false; };
 
         virtual bool isPlayer() { return false; };
-        virtual bool isSurrender() { return _data.isSurrender; }
+        inline virtual bool isSurrender() { return _data.isSurrender; }
 
-        virtual bool inCombat() { return _data.inCombat; }
+        inline virtual bool inCombat() { return _data.inCombat; }
         virtual void setInCombat() = 0;
         virtual void setNotInCombat() = 0;
 
         bool IsDamageImmune() {}
 
-        bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
+        inline bool hasHitImmunity() const { return clock::now() < _data.hitImmunityExpiration; }
         virtual void setHitImmunityFor(std::chrono::milliseconds ms) = 0;
 
-        LastHitAggressorsType getLastHitAggressors() const { return _data.lastHitAggressors; };
+        inline LastHitAggressorsType getLastHitAggressors() const { return _data.lastHitAggressors; };
         virtual void setLastHitAggressor(DefeatActorType lastHitAggressor) = 0;
         virtual void clearLastHitAggressors() = 0;
 
-        DefeatActorStates getState() const { return _data.state; };
+        inline DefeatActorStates getState() const { return _data.state; };
         virtual void setState(DefeatActorStates state) = 0;
         virtual bool tryExchangeState(DefeatActorStates oldState, DefeatActorStates newState) = 0;
-        bool isStateTransition() { return _data.flags.any(DefeatActorStateFlags::STATE_TRANSITION); };
+        inline bool isStateTransition() { return _data.flags.any(DefeatActorStateFlags::STATE_TRANSITION); };
         virtual void setStateTransition(bool val) = 0;
 
-        float getDynamicDefeat() const { return _data.dynamicDefeat; }
+        inline float getDynamicDefeat() const { return _data.dynamicDefeat; }
         virtual float incrementDynamicDefeat(float val) = 0;
         virtual float decrementDynamicDefeat(float val) = 0;
         virtual float resetDynamicDefeat() = 0;
 
-        virtual float getVulnerability() { return _data.vulnerability; }
+        inline virtual float getVulnerability() { return _data.vulnerability; }
         virtual void setVulnerability(float vulnerability) = 0;
 
         virtual void requestExtraData(DefeatActorType actor, std::function<void()> callback,
                                       milliseconds timeoutMs) = 0;
         virtual void setExtraData(ActorExtraData data) = 0;
-        bool isExtraDataExpired() const { return clock::now() > _data.extraDataExpiration; }
+        inline bool isExtraDataExpired() const { return clock::now() > _data.extraDataExpiration; }
         virtual void setExtraDataExpirationFor(std::chrono::milliseconds ms) = 0;
 
-        float getDFWVulnerability() const { return _data.DFWVulnerability; }
+        inline float getDFWVulnerability() const { return _data.DFWVulnerability; }
         virtual void setDFWVulnerability(float vulnerability) = 0;
 
-        bool isIgnoreActorOnHit() const { return _data.ignoreActorOnHit; };
+        inline bool isIgnoreActorOnHit() const { return _data.ignoreActorOnHit; };
         virtual void setIgnoreActorOnHit(bool val) = 0;
 
-        int getSexLabGender() const { return _data.sexLabGender; };
+        inline int getSexLabGender() const { return _data.sexLabGender; };
         virtual void setSexLabGender(int val) = 0;
 
-        int getSexLabSexuality() const { return _data.sexLabSexuality; };
+        inline int getSexLabSexuality() const { return _data.sexLabSexuality; };
         virtual void setSexLabSexuality(int val) = 0;
 
-        virtual bool isSexLabAllowed() { return _data.sexLabAllowed; }
+        inline virtual bool isSexLabAllowed() { return _data.sexLabAllowed; }
         virtual void setSexLabAllowed(bool val) = 0;
 
-        std::string getSexLabRaceKey() const { return _data.sexLabRaceKey; }
+        inline std::string getSexLabRaceKey() const { return _data.sexLabRaceKey; }
         virtual void setSexLabRaceKey(std::string val) = 0;
 
-        bool isFemale() const { return getSexLabGender() == 1; }
-        bool IsStraight() const { return getSexLabSexuality() >= 65; }
-        bool IsGay() const { return getSexLabSexuality() <= 35; }
-        bool IsBisexual() const {
+        inline bool isFemale() const { return getSexLabGender() == 1; }
+        inline bool IsStraight() const { return getSexLabSexuality() >= 65; }
+        inline bool IsGay() const { return getSexLabSexuality() <= 35; }
+        inline bool IsBisexual() const {
             auto ratio = getSexLabSexuality();
             return (ratio < 65 && ratio > 35);
         }
@@ -497,6 +497,7 @@ namespace SexLabDefeat {
 
         virtual GameState getGameState() = 0;
         virtual void setGameState(GameState state) = 0;
+        virtual DefeatActorStates getStateByString(std::string state) = 0;
 
         virtual IDefeatWidget* getWidget() = 0;
         virtual IDefeatCombatManager* getCombatManager() = 0;

@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.21)
 
 # Set your project name. This will be the name of your SKSE .dll file.
 project(SexLabDefeat VERSION 0.1 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 #set(VR_VERSION 2)
 #set(AE_VERSION 1)
 
@@ -69,6 +72,10 @@ set(source_files ${source_files}
 
 # Setup your SKSE plugin as an SKSE plugin!
 find_package(CommonLibSSE CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS         
+		stacktrace_basic)
+		
+find_library(Detours_LIBRARIES NAMES detours.lib)
 
 add_custom_target(BuildVersion
   ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/BuildVersion.h.in
@@ -79,6 +86,11 @@ add_custom_target(BuildVersion
 add_commonlibsse_plugin(
     ${PROJECT_NAME} 
     SOURCES ${source_files} plugin.cpp
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::stacktrace_basic)
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+        ${Detours_LIBRARIES}
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE PCH.h) # <--- PCH.h is required!

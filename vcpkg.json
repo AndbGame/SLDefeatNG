@@ -6,6 +6,8 @@
     "commonlibsse-ng",
     "boost-algorithm",
     "boost-atomic",
-    "boost-property-tree"
+    "boost-stacktrace",
+    "boost-property-tree",
+    "detours"
   ]
 }

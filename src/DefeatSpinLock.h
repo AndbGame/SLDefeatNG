@@ -15,8 +15,7 @@ namespace SexLabDefeat {
 
         SpinLock() : _owningThread(0), _lockCount(0){};
 
-        void spinLock(std::uint32_t a_pauseAttempts = 0) {
-            //lock.Lock();
+        void spinLock(std::uint32_t a_pauseAttempts = 0) noexcept {
             std::uint32_t myThreadID = std::this_thread::get_id()._Get_underlying_id();
 
             _mm_lfence();
@@ -42,7 +41,6 @@ namespace SexLabDefeat {
                                     SKSE::log::error("SpinLock {} attempts!", counter);
                                     counter = 0;
                                 }
-                                //Sleep(++spinCount < kFastSpinThreshold ? 0 : 1);
                                 std::this_thread::sleep_for(++spinCount < kFastSpinThreshold ? 0ms : 1ms);
                             }
                             break;
@@ -56,8 +54,7 @@ namespace SexLabDefeat {
                 _mm_sfence();
             }
         }
-        void spinUnlock() { 
-            //lock.Unlock();
+        void spinUnlock() noexcept {
             std::uint32_t myThreadID = std::this_thread::get_id()._Get_underlying_id();
 
             _mm_lfence();
@@ -73,11 +70,9 @@ namespace SexLabDefeat {
         }
 
     private:
-        // members
-        volatile std::uint32_t _owningThread;  // 0
-        volatile long _lockCount;     // 4
+        volatile std::uint32_t _owningThread;
+        volatile long _lockCount;
     };
-    static_assert(sizeof(SpinLock) == 0x8);
 
     class UniqueSpinLock {
     public:
