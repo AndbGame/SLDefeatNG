@@ -455,6 +455,22 @@ namespace SexLabDefeat {
         std::list<DefeatActorType> followers{};
         auto isFollower = actor->isFollower();
 
+        auto isAllowed = [=](DefeatActorType aggr) {
+            if (aggr->getState() != DefeatActorStates::ACTIVE) {
+                SKSE::log::trace(
+                    "getNearestAggressorsForGangBang for {:08X}:  not in active state - {:08X}",
+                    actor->getTESFormId(), aggr->getTESFormId());
+                return false;
+            }
+            if (!IsSexualAssaulAllowedByAggressor(actor, aggr.get())) {
+                SKSE::log::trace(
+                    "getNearestAggressorsForGangBang for {:08X}: !IsSexualAssaulAllowedByAggressor skip - {:08X}",
+                    actor->getTESFormId(), aggr->getTESFormId());
+                return false;
+            }
+            return true;
+        };
+
         std::list<DefeatActorType>::iterator defActorIt = list.begin();
         while (defActorIt != list.end()) {
             if ((*defActorIt)->isFollower()) {
@@ -475,10 +491,7 @@ namespace SexLabDefeat {
             }
             auto lastHitAggressors = actor->getLastHitAggressors();
             if (lastHitAggressors.find((*defActorIt)->getTESFormId()) != lastHitAggressors.end()) {
-                if (!IsSexualAssaulAllowedByAggressor(actor, (*defActorIt).get())) {
-                    SKSE::log::trace(
-                        "getNearestAggressorsForGangBang {:08X} !IsSexualAssaulAllowedByAggressor skip - {:08X}",
-                        actor->getTESFormId(), (*defActorIt)->getTESFormId());
+                if (!isAllowed(*defActorIt)) {
                     defActorIt = list.erase(defActorIt);
                     continue;
                 }
@@ -496,10 +509,7 @@ namespace SexLabDefeat {
             while (defActorIt != list.end()) {
                 if (auto search = candidateAgressorsForFollowers.find((*defActorIt)->getTESFormId());
                     search != candidateAgressorsForFollowers.end()) {
-                    if (!IsSexualAssaulAllowedByAggressor(actor, (*defActorIt).get())) {
-                        SKSE::log::trace(
-                            "getNearestAggressorsForGangBang {:08X} !IsSexualAssaulAllowedByAggressor for followers skip - {:08X}",
-                            actor->getTESFormId(), (*defActorIt)->getTESFormId());
+                    if (!isAllowed(*defActorIt)) {
                         defActorIt = list.erase(defActorIt);
                         continue;
                     }
@@ -518,11 +528,7 @@ namespace SexLabDefeat {
                 while (defActorIt != list.end()) {
                     if (auto search = playerLastHitAggressors.find((*defActorIt)->getTESFormId());
                         search != playerLastHitAggressors.end()) {
-                        if (!IsSexualAssaulAllowedByAggressor(actor, (*defActorIt).get())) {
-                            SKSE::log::trace(
-                                "getNearestAggressorsForGangBang {:08X} !IsSexualAssaulAllowedByAggressor for "
-                                "player skip - {:08X}",
-                                actor->getTESFormId(), (*defActorIt)->getTESFormId());
+                        if (!isAllowed(*defActorIt)) {
                             defActorIt = list.erase(defActorIt);
                             continue;
                         }
@@ -543,11 +549,7 @@ namespace SexLabDefeat {
                     auto lastHitAggressors = (*followerIt)->getLastHitAggressors();
                     if (lastHitAggressors.find(actor->getTESFormId()) != lastHitAggressors.end()) {
                         hasHitToFollower = true;
-                        if (!IsSexualAssaulAllowedByAggressor(actor, (*followerIt).get())) {
-                            SKSE::log::trace(
-                                "getNearestAggressorsForGangBang {:08X} !IsSexualAssaulAllowedByAggressor by "
-                                "follower after hit skip - {:08X}",
-                                actor->getTESFormId(), (*followerIt)->getTESFormId());
+                        if (!isAllowed(*followerIt)) {
                             followerIt = followers.erase(followerIt);
                             continue;
                         }
@@ -561,11 +563,7 @@ namespace SexLabDefeat {
             if (ret.size() == 0 && hasHitToFollower && followers.size() > 0) {
                 std::list<DefeatActorType>::iterator followerIt = followers.begin();
                 while (followerIt != followers.end()) {
-                    if (!IsSexualAssaulAllowedByAggressor(actor, (*followerIt).get())) {
-                        SKSE::log::trace(
-                            "getNearestAggressorsForGangBang {:08X} !IsSexualAssaulAllowedByAggressor by "
-                            "follower skip - {:08X}",
-                            actor->getTESFormId(), (*followerIt)->getTESFormId());
+                    if (!isAllowed(*followerIt)) {
                         followerIt = followers.erase(followerIt);
                         continue;
                     }
