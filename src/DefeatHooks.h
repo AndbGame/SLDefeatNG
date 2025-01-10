@@ -17,4 +17,9 @@ namespace Hooks {
                                     float& unk10);
 
     static inline REL::Relocation<decltype(DoDetect)> _DoDetect;
+
+    // Actor::DrawWeaponMagicHands
+    static void DrawWeaponMagicHands(RE::Actor* actor, bool a_draw);
+
+    static inline REL::Relocation<decltype(DrawWeaponMagicHands)> _DrawWeaponMagicHands;
 }

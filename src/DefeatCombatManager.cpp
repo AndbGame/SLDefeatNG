@@ -587,7 +587,7 @@ namespace SexLabDefeat {
         event.target->incrementDynamicDefeat(DefeatAmount);
         auto totalDynamicDefeat = event.target->getDynamicDefeat();
 
-        if (widget->getState() != IDefeatWidget::State::DYNAMIC_WIDGET && totalDynamicDefeat > 0) {
+        if (/* widget->getState() != IDefeatWidget::State::DYNAMIC_WIDGET &&*/ totalDynamicDefeat > 0) {
             if (!widget->startDynamicWidget()) {
                 SKSE::log::error("Error on start Dynamic Widget");
             }

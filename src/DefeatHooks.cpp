@@ -190,6 +190,19 @@ namespace Hooks {
         return _DoDetect(viewer, target, detectval, unk04, unk05, unk06, pos, unk08, unk09, unk10);
     }
 
+    void DrawWeaponMagicHands(RE::Actor* actor, bool a_draw) {
+        if (a_draw && manager->getActorManager()->getDefeatActorImplState(actor->GetFormID()) !=
+                          SexLabDefeat::DefeatActorStates::ACTIVE) {
+            SKSE::log::trace("DrawWeaponMagicHands interrupt: {:08X}", actor->GetFormID());
+            return;
+        }
+        SKSE::log::trace("DrawWeaponMagicHands {} : {:08X}: {}", a_draw, actor->GetFormID(),
+                         (std::uint32_t)actor->AsActorState()->actorState2.weaponState);
+
+
+        _DrawWeaponMagicHands(actor, a_draw);
+    }
+
 }
 
 void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
@@ -201,6 +214,12 @@ void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
 
     REL::Relocation<std::uintptr_t> det{REL::RelocationID(41659, 42742), REL::VariantOffset(0x526, 0x67B, 0)};
     Hooks::_DoDetect = trampoline.write_call<5>(det.address(), Hooks::DoDetect);
+
+    REL::Relocation<std::uintptr_t> actor_vt{RE::VTABLE_Actor[0]};
+    REL::Relocation<std::uintptr_t> character_vt{RE::Character::VTABLE[0]};
+    Hooks::_DrawWeaponMagicHands = actor_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
+    Hooks::_DrawWeaponMagicHands = character_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
+
     SKSE::log::info("Install hooks post");
 }
 
