@@ -3,99 +3,77 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Set your project name. This will be the name of your SKSE .dll file.
-project(SexLabDefeat VERSION 0.1 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-#set(VR_VERSION 2)
-#set(AE_VERSION 1)
+project(SexLabDefeat VERSION 0.2.0 LANGUAGES CXX)
 
-#option(BUILD_SKYRIMVR "Build for Skyrim VR" OFF)
-#option(BUILD_SKYRIMAE "Build for Skyrim AE" OFF)
-
-macro(set_from_environment VARIABLE)
-	if(NOT DEFINED ${VARIABLE} AND DEFINED ENV{${VARIABLE}})
-		set(${VARIABLE} $ENV{${VARIABLE}})
-	endif()
-endmacro()
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include("CMakeUser.txt" OPTIONAL)
 
-if(BUILD_SKYRIMAE)
-	add_compile_definitions(SKYRIM_AE)
-	add_compile_definitions(ENABLE_SKYRIM_AE)
-#	set(CommonLibName "CommonLibSSE")
-#	set_from_environment(SkyrimAEPath)
-#	set(SkyrimPath ${SkyrimAEPath})
-#	set(SkyrimVersion "Skyrim AE")
-#	set(VERSION ${VERSION}.${AE_VERSION})
-elseif(BUILD_SKYRIMVR)
-#	add_compile_definitions(SKYRIMVR)
-#	add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-#	set(CommonLibName "CommonLibVR")
-#	set_from_environment(SkyrimVRPath)
-#	set(SkyrimPath ${SkyrimVRPath})
-#	set(SkyrimVersion "Skyrim VR")
-#	set(VERSION ${VERSION}.${VR_VERSION})
-else()
-#	set(CommonLibName "CommonLibSSE")
-#	set_from_environment(Skyrim64Path)
-#	set(SkyrimPath ${Skyrim64Path})
-#	set(SkyrimVersion "Skyrim SSE")
-endif()
+# #######################################################################################################################
+# # Add CMake features
+# #######################################################################################################################
+include(XSEPlugin)
 
-# Otherwise, you can set OUTPUT_FOLDER to any place you'd like :)
-# set(OUTPUT_FOLDER "C:/path/to/any/folder")
-
-# Get the .cpp files from your src/ directory
-# to be passed into add_commonlibsse_plugin
-#
-# This helper automatically finds all of your .cpp files for you
-#
-# Please note: the official recommendation is to list our every .cpp
-# file individually after SOURCES
-set(source_files ${source_files}
-    src/DefeatUtils.cpp
-    src/DefeatConfig.cpp
-    src/DefeatWidget.cpp
-    src/DefeatHooks.cpp
-    src/DefeatActor.cpp
-    src/DefeatActorManager.cpp
-    src/DefeatCombatManager.cpp
-    src/DefeatScene.cpp
-    src/DefeatManager.cpp
-    src/PapyrusInterface/DefeatPapyrus.cpp
-	src/PapyrusInterface/ExpiringFunctionCallQueue.cpp
-	src/PapyrusInterface/ActorExtraDataCallQueue.cpp
-	src/PapyrusInterface/ObjectVariable.cpp
+# #######################################################################################################################
+# # Find dependencies
+# #######################################################################################################################
+find_package(magic_enum CONFIG REQUIRED)
+find_package(xbyak CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(directxtex CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS 
+	stacktrace_basic
+	property_tree
+	algorithm
 )
-
-# Setup your SKSE plugin as an SKSE plugin!
-find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS         
-		stacktrace_basic)
-		
 find_library(Detours_LIBRARIES NAMES detours.lib)
+find_package(imgui CONFIG REQUIRED)
 
-add_custom_target(BuildVersion
-  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/BuildVersion.h.in
-                   -D DST=${CMAKE_SOURCE_DIR}/BuildVersion.h
-                   -P ${CMAKE_SOURCE_DIR}/GenerateBuildVersion.cmake
-  )
+find_path(CLIB_UTIL_INCLUDE_DIRS "ClibUtil/utils.hpp")
 
-add_commonlibsse_plugin(
-    ${PROJECT_NAME} 
-    SOURCES ${source_files} plugin.cpp
+target_include_directories(
+	${PROJECT_NAME} 
+	PRIVATE 
+	include
+	magic_enum::magic_enum
+	xbyak::xbyak
+	nlohmann_json::nlohmann_json
+	Microsoft::DirectXTex
+	Boost::property_tree
+	Boost::algorithm
+	imgui::imgui
+	${CLIB_UTIL_INCLUDE_DIRS}
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::stacktrace_basic)
+
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+		Boost::stacktrace_basic
         ${Detours_LIBRARIES}
 )
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
-target_precompile_headers(${PROJECT_NAME} PRIVATE PCH.h) # <--- PCH.h is required!
-target_include_directories(${PROJECT_NAME} PRIVATE include)
-add_dependencies(${PROJECT_NAME} BuildVersion)
+
+#target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
+#target_precompile_headers(${PROJECT_NAME} PRIVATE PCH.h) # <--- PCH.h is required!
+
+
+# https://gitlab.kitware.com/cmake/cmake/-/issues/24922#note_1371990
+if(MSVC_VERSION GREATER_EQUAL 1936 AND MSVC_IDE) # 17.6+
+	# When using /std:c++latest, "Build ISO C++23 Standard Library Modules" defaults to "Yes".
+	# Default to "No" instead.
+	#
+	# As of CMake 3.26.4, there isn't a way to control this property
+	# (https://gitlab.kitware.com/cmake/cmake/-/issues/24922),
+	# We'll use the MSBuild project system instead
+	# (https://learn.microsoft.com/en-us/cpp/build/reference/vcxproj-file-structure)
+	file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/Directory.Build.props" CONTENT [==[
+<Project>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <BuildStlModules>false</BuildStlModules>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>
+]==] @ONLY)
+endif()
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)

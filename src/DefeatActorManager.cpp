@@ -2,6 +2,8 @@
 
 #include "DefeatActor.h"
 
+#undef GetObject
+
 namespace SexLabDefeat {
 
     void DefeatActorManager::reset() {

@@ -180,7 +180,7 @@ namespace Hooks {
                              uint32_t& unk06, RE::NiPoint3& pos, float& unk08, float& unk09, float& unk10) {
         if (target && manager->getActorManager()->getDefeatActorImplState(target->GetFormID()) !=
                           SexLabDefeat::DefeatActorStates::ACTIVE) {
-            SKSE::log::trace("DoDetect interrupt: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
+            TRACE("DoDetect interrupt: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
             return nullptr;
         }
         if (viewer && manager->getActorManager()->getDefeatActorImplState(viewer->GetFormID()) !=
@@ -193,10 +193,10 @@ namespace Hooks {
     void DrawWeaponMagicHands(RE::Actor* actor, bool a_draw) {
         if (a_draw && manager->getActorManager()->getDefeatActorImplState(actor->GetFormID()) !=
                           SexLabDefeat::DefeatActorStates::ACTIVE) {
-            SKSE::log::trace("DrawWeaponMagicHands interrupt: {:08X}", actor->GetFormID());
+            TRACE("DrawWeaponMagicHands interrupt: {:08X}", actor->GetFormID());
             return;
         }
-        SKSE::log::trace("DrawWeaponMagicHands {} : {:08X}: {}", a_draw, actor->GetFormID(),
+        TRACE("DrawWeaponMagicHands {} : {:08X}: {}", a_draw, actor->GetFormID(),
                          (std::uint32_t)actor->AsActorState()->actorState2.weaponState);
 
 

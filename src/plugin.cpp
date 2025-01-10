@@ -1,8 +1,9 @@
+#define DLLEXPORT __declspec(dllexport)
+
 #include <Defeat.h>
 
-#include "BuildVersion.h"
-#include "src/DefeatManager.h"
-#include "src/DefeatHooks.h"
+#include "DefeatManager.h"
+#include "DefeatHooks.h"
 
 int SexLabDefeat::format_as(SexLabDefeat::DefeatActorStates f) { return fmt::underlying(f); }
 int SexLabDefeat::format_as(SexLabDefeat::HitResult f) { return fmt::underlying(f); }
@@ -65,16 +66,16 @@ namespace {
     }
 }
 
-SKSEPluginLoad(const SKSE::LoadInterface* skse) {
-    SKSE::Init(skse);
-            
+extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse) {
     SetupLog();
-     
+    LOG("Loaded plugin {} {}", Plugin::NAME, Plugin::VERSION.string());
+    SKSE::Init(a_skse);
+
     defeatConfig = new SexLabDefeat::DefeatConfig();
     defeatConfig->readIniConfig();
 
     ConfigureLog();
-    SKSE::log::info("Build {}", BUILD_VERSION);
+    SKSE::log::info("Version {}", Plugin::VERSION.string());
 
     defeatManager = new SexLabDefeat::DefeatManager(defeatConfig);
     defeatManager->load();
@@ -85,6 +86,21 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 
     SexLabDefeat::installHooks(defeatManager);
     SexLabDefeat::installEventSink(defeatManager);
+    return true;
+}
 
+extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() noexcept {
+    SKSE::PluginVersionData v;
+    v.PluginName(Plugin::NAME.data());
+    v.PluginVersion(Plugin::VERSION);
+    v.UsesAddressLibrary();
+    v.UsesNoStructs();
+    return v;
+}();
+
+extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface*, SKSE::PluginInfo* pluginInfo) {
+    pluginInfo->name = SKSEPlugin_Version.pluginName;
+    pluginInfo->infoVersion = SKSE::PluginInfo::kVersion;
+    pluginInfo->version = SKSEPlugin_Version.pluginVersion;
     return true;
 }
