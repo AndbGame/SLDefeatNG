@@ -1,6 +1,6 @@
 # It's recommended to set a minimum CMake version.
 # If you use CMake features from higher versions, update this to match.
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 
 # Set your project name. This will be the name of your SKSE .dll file.
 project(SexLabDefeat VERSION 0.2.0 LANGUAGES CXX)
@@ -21,6 +21,11 @@ find_package(magic_enum CONFIG REQUIRED)
 find_package(xbyak CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(directxtex CONFIG REQUIRED)
+
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
 find_package(Boost REQUIRED COMPONENTS 
 	stacktrace_basic
 	property_tree

@@ -84,6 +84,11 @@ namespace SexLabDefeat {
         // flag3 = 1 << 6,
         // flag3 = 1 << 7
     };
+
+    struct DefeatActorState {
+
+    };
+
     struct DefeatActorDataType {
         RE::FormID TESFormId = 0;
         clock::time_point hitImmunityExpiration = SexLabDefeat::emptyTime;
@@ -443,6 +448,8 @@ namespace SexLabDefeat {
         virtual DefeatActorType getDefeatActor(RE::Actor* actor) = 0;
         virtual DefeatActorType getDefeatActor(IDefeatActorType actor) = 0;
         virtual RE::Actor* getTESActor(DefeatActor* actor) = 0;
+        virtual void drawWeapon(RE::Actor* actor) = 0;
+        virtual void sheatheWeapon(RE::Actor* actor) = 0;
     };
 
     /***************************************************************************************************

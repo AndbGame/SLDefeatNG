@@ -34,6 +34,24 @@ namespace {
         _defeatManager->setActorState(actor, _state, false);
     }
 
+    inline void DrawWeapon(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        if (actor == nullptr) {
+            return;
+        }
+        SKSE::log::trace("Papyrus call DrawWeapon(<{:08X}:{}>)", actor->GetFormID(), actor->GetName());
+
+        _defeatManager->getActorManager()->drawWeapon(actor);
+    }
+
+    inline void SheatheWeapon(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        if (actor == nullptr) {
+            return;
+        }
+        SKSE::log::trace("Papyrus call SheatheWeapon(<{:08X}:{}>)", actor->GetFormID(), actor->GetName());
+
+        _defeatManager->getActorManager()->sheatheWeapon(actor);
+    }
+
     inline bool tryExchangeActorState(PAPYRUSFUNCHANDLE, RE::Actor* actor, std::string oldState, std::string newState) {
         if (actor == nullptr) {
             return false;
@@ -64,6 +82,20 @@ namespace {
             return stateStringIt->second;
         }
         return SexLabDefeat::DefeatManager::DefeatActorStatesStrings[SexLabDefeat::DefeatActorStates::DISACTIVE];
+    }
+
+    inline bool isActorTied(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
+        if (actor == nullptr) {
+            SKSE::log::error("Papyrus call isActorTied() on NULL actor");
+            return false;
+        }
+        bool isTied = false;
+        auto defeatActor = _defeatManager->getActorManager()->getDefeatActor(actor);
+        if (defeatActor) {
+            isTied = defeatActor->isTied();
+        }
+        SKSE::log::trace("Papyrus call isActorTied(<{:08X}:{}>) -> {}", actor->GetFormID(), actor->GetName(), isTied);
+        return isTied;
     }
 
     inline RE::Actor* getLastHitAggressor(PAPYRUSFUNCHANDLE, RE::Actor* actor) {
@@ -124,9 +156,12 @@ namespace {
         REGISTERPAPYRUSFUNC(setActorState, true)
         REGISTERPAPYRUSFUNC(tryExchangeActorState, true)
         REGISTERPAPYRUSFUNC(getActorState, true)
+        REGISTERPAPYRUSFUNC(isActorTied, true)
         REGISTERPAPYRUSFUNC(getLastHitAggressor, true)
         REGISTERPAPYRUSFUNC(queryNvNScene, true)
         REGISTERPAPYRUSFUNC(getNearestActorsForGangBang, true)
+        REGISTERPAPYRUSFUNC(DrawWeapon, true)
+        REGISTERPAPYRUSFUNC(SheatheWeapon, true)
 
 #undef REGISTERPAPYRUSFUNC
             return true;

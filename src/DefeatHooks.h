@@ -22,4 +22,5 @@ namespace Hooks {
     static void DrawWeaponMagicHands(RE::Actor* actor, bool a_draw);
 
     static inline REL::Relocation<decltype(DrawWeaponMagicHands)> _DrawWeaponMagicHands;
+    static bool DrawWeaponMagicHandsInstalled;
 }

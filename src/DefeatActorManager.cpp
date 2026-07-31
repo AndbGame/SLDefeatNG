@@ -1,6 +1,7 @@
 #include "DefeatActorManager.h"
 
 #include "DefeatActor.h"
+#include "DefeatHooks.h"
 
 #undef GetObject
 
@@ -39,7 +40,7 @@ namespace SexLabDefeat {
         }
         return defeatActorImpl;
     }
-    DefeatActorStates DefeatActorManager::getDefeatActorImplState(RE::FormID formID) {
+    DefeatActorStates DefeatActorManager::getDefeatActorState(RE::FormID formID) {
         SexLabDefeat::UniqueSpinLock lock(*this);
         auto val = _actorMap.find(formID);
         DefeatActorStates state = DefeatActorStates::ACTIVE;
@@ -77,6 +78,22 @@ namespace SexLabDefeat {
     DefeatActorType DefeatActorManager::getDefeatActor(IDefeatActorType actor) { return getDefeatActor(actor->getTESFormId()); }
 
     RE::Actor* DefeatActorManager::getTESActor(DefeatActor* actor) { return actor->getTESActor(); }
+
+    void DefeatActorManager::drawWeapon(RE::Actor* actor) {
+        if (Hooks::DrawWeaponMagicHandsInstalled) {
+            Hooks::_DrawWeaponMagicHands(actor, true);
+            return;
+        }
+        actor->DrawWeaponMagicHands(true);
+    }
+
+    void DefeatActorManager::sheatheWeapon(RE::Actor* actor) {
+        if (Hooks::DrawWeaponMagicHandsInstalled) {
+            Hooks::_DrawWeaponMagicHands(actor, false);
+            return;
+        }
+        actor->DrawWeaponMagicHands(false);
+    }
         
     bool DefeatActorManager::isDefeatAllowedByAgressor(DefeatActor* target, DefeatActor* aggressor) {
         if (target->isPlayer()) {

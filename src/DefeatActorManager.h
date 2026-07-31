@@ -30,7 +30,10 @@ namespace SexLabDefeat {
         DefeatActorType getDefeatActor(IDefeatActorType actor) override;
         RE::Actor* getTESActor(DefeatActor* actor) override;
 
-        DefeatActorStates getDefeatActorImplState(RE::FormID formID);
+        virtual void drawWeapon(RE::Actor* actor) override;
+        virtual void sheatheWeapon(RE::Actor* actor) override;
+
+        DefeatActorStates getDefeatActorState(RE::FormID formID);
 
         /* Pre Checks functions */
         bool isIgnored(RE::Actor* actor);

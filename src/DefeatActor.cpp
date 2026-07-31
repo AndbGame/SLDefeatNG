@@ -50,11 +50,11 @@ namespace SexLabDefeat {
     }
 
     bool DefeatActor::isTied() {
+        std::list<std::string> kwds{"DefeatWornDevice"};
         if (getActorManager()->getSoftDependency().ZaZ) {
-            return getActorManager()->wornHasAnyKeyword(
-                this, std::list<std::string>{"zbfWornWrist", "DefeatWornDevice"});
+            kwds.push_back("zbfWornWrist");
         }
-        return false;
+        return getActorManager()->wornHasAnyKeyword(this, kwds);
     }
 
     bool DefeatActor::isSexLabAllowed() {

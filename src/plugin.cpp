@@ -69,7 +69,7 @@ namespace {
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse) {
     SetupLog();
     LOG("Loaded plugin {} {}", Plugin::NAME, Plugin::VERSION.string());
-    SKSE::Init(a_skse);
+    SKSE::Init(a_skse, false);
 
     defeatConfig = new SexLabDefeat::DefeatConfig();
     defeatConfig->readIniConfig();

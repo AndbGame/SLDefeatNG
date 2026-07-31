@@ -95,7 +95,7 @@ namespace util {
 #include "Plugin.h"
 using json = nlohmann::json;
 
-#include <magic_enum.hpp>
+//#include <magic_enum.hpp>
 
 #include "SimpleMath.h"
 

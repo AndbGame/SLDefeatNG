@@ -13,7 +13,8 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESCombatEvent* a_event,
             RE::BSTEventSource<RE::TESCombatEvent>* a_eventSource) {
-            if (a_event->actor != nullptr) {
+            if (a_event->actor != nullptr &&
+                _defeatManager->getGameState() == SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
                 auto actor = a_event->actor->As<RE::Actor>();
                 if (actor != nullptr) {
                     if (a_event->newState.get() == RE::ACTOR_COMBAT_STATE::kCombat) {
@@ -51,7 +52,8 @@ namespace EventSync {
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::BSAnimationGraphEvent* a_event,
                                                       RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource) {
 
-            if (!a_event || a_event->holder->IsNot(RE::FormType::ActorCharacter)) {
+            if (!a_event || a_event->holder->IsNot(RE::FormType::ActorCharacter) ||
+                _defeatManager->getGameState() != SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
                 return RE::BSEventNotifyControl::kContinue;
             }
 
@@ -81,7 +83,8 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESHitEvent* a_event,
                                                       RE::BSTEventSource<RE::TESHitEvent>* a_eventSource) {
-            if (a_event->cause == nullptr) {
+            if (a_event->cause == nullptr ||
+                _defeatManager->getGameState() != SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
                 return RE::BSEventNotifyControl::kContinue;
             }
 
@@ -118,7 +121,8 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEnterBleedoutEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEnterBleedoutEvent>* a_eventSource) {
-            if (a_event->actor != nullptr) {
+            if (a_event->actor != nullptr &&
+                _defeatManager->getGameState() == SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
                 auto target_actor = a_event->actor->As<RE::Actor>();
                 if (target_actor != nullptr) {
                     SKSE::log::info("OnTESEnterBleedoutEventHandler <{:08X}:{}> Enter Bleedout", target_actor->GetFormID(),
@@ -138,9 +142,11 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* a_event,
                                                       RE::BSTEventSource<RE::TESEquipEvent>* a_eventSource) {
-
-            SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
-                             a_event->equipped, a_event->baseObject);
+            if (a_event->actor != nullptr &&
+                _defeatManager->getGameState() == SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
+                SKSE::log::trace("OnTESEquipEventHandler, {:08X} - {} - {:08X}", a_event->actor->GetFormID(),
+                                 a_event->equipped, a_event->baseObject);
+            }
             return RE::BSEventNotifyControl::kContinue;
         }
     };
@@ -153,7 +159,7 @@ namespace EventSync {
 
         virtual RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event,
                                                       RE::BSTEventSource<RE::InputEvent*>* a_eventSource) {
-            if (!a_event) {
+            if (!a_event || _defeatManager->getGameState() != SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
                 return RE::BSEventNotifyControl::kContinue;
             }
 
@@ -178,26 +184,29 @@ namespace Hooks {
     
 	uint8_t* Hooks::DoDetect(RE::Actor* viewer, RE::Actor* target, int32_t& detectval, uint8_t& unk04, uint8_t& unk05,
                              uint32_t& unk06, RE::NiPoint3& pos, float& unk08, float& unk09, float& unk10) {
-        if (target && manager->getActorManager()->getDefeatActorImplState(target->GetFormID()) !=
-                          SexLabDefeat::DefeatActorStates::ACTIVE) {
-            TRACE("DoDetect interrupt: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
-            return nullptr;
-        }
-        if (viewer && manager->getActorManager()->getDefeatActorImplState(viewer->GetFormID()) !=
-                          SexLabDefeat::DefeatActorStates::ACTIVE) {
-            return nullptr;
+        if (manager->getGameState() == SexLabDefeat::IDefeatManager::GameState::IN_GAME) {
+            if (target && manager->getActorManager()->getDefeatActorState(target->GetFormID()) !=
+                              SexLabDefeat::DefeatActorStates::ACTIVE) {
+                TRACE("DoDetect interrupt target: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
+                detectval = -1000;
+                return nullptr;
+            }
+            if (viewer && manager->getActorManager()->getDefeatActorState(viewer->GetFormID()) !=
+                              SexLabDefeat::DefeatActorStates::ACTIVE) {
+                TRACE("DoDetect interrupt viewer: {:08X} -> {:08X}", viewer->GetFormID(), target->GetFormID());
+                detectval = -1000;
+                return nullptr;
+            }
         }
         return _DoDetect(viewer, target, detectval, unk04, unk05, unk06, pos, unk08, unk09, unk10);
     }
 
     void DrawWeaponMagicHands(RE::Actor* actor, bool a_draw) {
-        if (a_draw && manager->getActorManager()->getDefeatActorImplState(actor->GetFormID()) !=
+        if (a_draw && manager->getActorManager()->getDefeatActorState(actor->GetFormID()) !=
                           SexLabDefeat::DefeatActorStates::ACTIVE) {
             TRACE("DrawWeaponMagicHands interrupt: {:08X}", actor->GetFormID());
             return;
         }
-        TRACE("DrawWeaponMagicHands {} : {:08X}: {}", a_draw, actor->GetFormID(),
-                         (std::uint32_t)actor->AsActorState()->actorState2.weaponState);
 
 
         _DrawWeaponMagicHands(actor, a_draw);
@@ -207,6 +216,7 @@ namespace Hooks {
 
 void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
     Hooks::manager = defeatManager;
+    Hooks::DrawWeaponMagicHandsInstalled = false;
 
     SKSE::log::info("Install hooks pre");
     SKSE::AllocTrampoline(14 * 2);
@@ -217,8 +227,9 @@ void SexLabDefeat::installHooks(SexLabDefeat::DefeatManager* defeatManager) {
 
     REL::Relocation<std::uintptr_t> actor_vt{RE::VTABLE_Actor[0]};
     REL::Relocation<std::uintptr_t> character_vt{RE::Character::VTABLE[0]};
-    Hooks::_DrawWeaponMagicHands = actor_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
-    Hooks::_DrawWeaponMagicHands = character_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
+    //Hooks::_DrawWeaponMagicHands = actor_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
+    //Hooks::_DrawWeaponMagicHands = character_vt.write_vfunc(0xA6, Hooks::DrawWeaponMagicHands);
+    //Hooks::DrawWeaponMagicHandsInstalled = true;
 
     SKSE::log::info("Install hooks post");
 }

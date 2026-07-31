@@ -179,7 +179,7 @@ namespace SexLabDefeat {
 
         auto aggr_actor = event.aggressor->As<RE::Actor>();
         auto target_actor = event.target->As<RE::Actor>();
-        if (!target_actor || !aggr_actor) {
+        if (!target_actor || !aggr_actor || target_actor == aggr_actor) {
             return;
         }
 
@@ -632,7 +632,7 @@ namespace SexLabDefeat {
             this->_playerDeplateDynamicDefeatStopThread = false;
             while (!this->_playerDeplateDynamicDefeatStopThread) {
                 std::this_thread::sleep_for(2s);
-                SKSE::log::trace("deplateDynamicDefeat thread working...");
+                TRACE("deplateDynamicDefeat thread working...");
 
                 auto re_ui = RE::UI::GetSingleton();
                 auto player = this->getDefeatManager()->getActorManager()->getPlayer();
